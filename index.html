@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tipkam.si</title>
+    <title>Perfect Text</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -12,19 +12,15 @@
       <div id="login-screen" class="login-screen">
         <div class="login-card">
           <div class="brand">
-            <div class="brand-icon">
-              <svg viewBox="0 0 24 24">
-                <rect x="9" y="1" width="6" height="12" rx="3" />
-                <path d="M5 10a7 7 0 0 0 14 0" />
-                <line x1="12" y1="17" x2="12" y2="21" />
-                <line x1="8" y1="21" x2="16" y2="21" />
-              </svg>
-            </div>
-            <h1>Tipkam.si</h1>
-            <p>Transkripcija govora</p>
+            <div class="brand-icon">PT</div>
+            <h1>Perfect Text</h1>
+            <p>AI Speech-to-Text</p>
           </div>
+
+          <div class="login-separator">Nadaljuj z e-pošto</div>
+
           <div class="form-group">
-            <label for="email">Email</label>
+            <label for="email">E-pošta</label>
             <input type="email" id="email" placeholder="vas@email.com" autocomplete="email" spellcheck="false" />
           </div>
           <div class="form-group">
@@ -39,9 +35,12 @@
       <!-- ====== MAIN SCREEN ====== -->
       <div id="main-screen" class="main-screen">
         <div class="main-header">
-          <div>
-            <h2>Tipkam.si</h2>
-            <span class="user-info" id="user-email"></span>
+          <div class="main-header-left">
+            <div class="header-logo">PT</div>
+            <div>
+              <h2>Perfect Text</h2>
+              <span class="user-info" id="user-email"></span>
+            </div>
           </div>
           <button id="logout-btn" class="btn-logout">Odjava</button>
         </div>
@@ -56,21 +55,24 @@
           </div>
 
           <!-- MODE TOGGLE (only visible for Slovenian) -->
-          <div id="mode-toggle" class="mode-toggle">
-            <button id="mode-fast-btn" class="mode-btn" title="Hiter surov prepis govora (Gemini Flash)">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-              </svg>
-              Hitro
-            </button>
-            <button id="mode-accurate-btn" class="mode-btn active" title="Natančno oblikovano besedilo (Gemini Pro)">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <circle cx="12" cy="12" r="6"/>
-                <circle cx="12" cy="12" r="2"/>
-              </svg>
-              Natančno
-            </button>
+          <div id="mode-toggle" class="mode-toggle-section">
+            <span class="mode-toggle-label">Način prepisa</span>
+            <div class="mode-toggle">
+              <button id="mode-accurate-btn" class="mode-btn active" title="Natančno oblikovano besedilo (Gemini Pro)">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <circle cx="12" cy="12" r="6"/>
+                  <circle cx="12" cy="12" r="2"/>
+                </svg>
+                Natančno
+              </button>
+              <button id="mode-fast-btn" class="mode-btn" title="Hiter surov prepis govora (Gemini Flash)">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+                Hitro
+              </button>
+            </div>
           </div>
 
           <!-- STATUS -->

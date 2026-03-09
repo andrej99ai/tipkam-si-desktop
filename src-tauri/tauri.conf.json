@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "Tipkam.si",
+  "productName": "Perfect Text",
   "version": "0.1.0",
   "build": {
     "beforeDevCommand": "npx vite",
@@ -12,7 +12,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Tipkam.si",
+        "title": "Perfect Text",
         "label": "main",
         "width": 480,
         "height": 700,
@@ -41,9 +41,15 @@
       "nsis": {
         "installMode": "both",
         "displayLanguageSelector": false,
-        "languages": ["English", "Slovenian"]
+        "languages": ["English", "Slovenian"],
+        "installerIcon": "icons/icon.ico",
+        "headerImage": null,
+        "sidebarImage": null,
+        "installerHooks": "nsis/installer.nsi"
       }
-    }
+    },
+    "shortDescription": "Perfect Text — AI Speech-to-Text",
+    "longDescription": "Desktop aplikacija za transkripcijo govora v besedilo. Deluje kjerkoli na Windows računalniku."
   },
   "identifier": "si.tipkam.desktop"
 }

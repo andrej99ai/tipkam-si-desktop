@@ -95,7 +95,7 @@ function handleLanguageChange() {
 
   if (isSlovenian(currentLanguage)) {
     // Show mode toggle for Slovenian
-    modeToggle.style.display = "flex";
+    modeToggle.style.display = "block";
   } else {
     // Hide mode toggle for other languages — always use "fast"
     modeToggle.style.display = "none";
@@ -195,7 +195,7 @@ function setStatus(
     case "ready":
       statusText.textContent = `Pripravljen — pritisni ${key} za narekovanje`;
       setTrayColor("green");
-      setTrayTooltip(`Tipkam.si — Pripravljen (${key})`);
+      setTrayTooltip(`Perfect Text — Pripravljen (${key})`);
       hideOverlay();
       break;
     case "recording":

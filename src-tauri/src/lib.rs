@@ -139,10 +139,10 @@ fn play_sound(sound_type: String) {
 #[tauri::command]
 fn set_tray_icon(app: tauri::AppHandle, color: String) {
     let (r, g, b) = match color.as_str() {
-        "green" => (26u8, 107, 78),
+        "green" => (14u8, 165, 233),  // #0ea5e9 — matches web app blue
         "red" => (220, 38, 38),
         "yellow" => (245, 158, 11),
-        _ => (26, 107, 78),
+        _ => (14, 165, 233),
     };
     let img = Image::new_owned(create_circle_rgba(r, g, b), 32, 32);
     let tray_id = get_tray_id(&app);
@@ -246,17 +246,17 @@ pub fn run() {
         .setup(move |app| {
             // ── System Tray ──
             let show_item =
-                MenuItemBuilder::with_id("show", "Odpri Tipkam.si").build(app)?;
+                MenuItemBuilder::with_id("show", "Odpri Perfect Text").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "Zapri").build(app)?;
             let tray_menu = MenuBuilder::new(app)
                 .items(&[&show_item, &quit_item])
                 .build()?;
-            let green_img = Image::new_owned(create_circle_rgba(26, 107, 78), 32, 32);
+            let green_img = Image::new_owned(create_circle_rgba(14, 165, 233), 32, 32);
 
             let tray = TrayIconBuilder::new()
                 .icon(green_img)
                 .menu(&tray_menu)
-                .tooltip("Tipkam.si — Pripravljen (F2)")
+                .tooltip("Perfect Text — Pripravljen (F2)")
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "show" => {
