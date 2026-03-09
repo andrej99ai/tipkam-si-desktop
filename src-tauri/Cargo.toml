@@ -1,0 +1,31 @@
+[package]
+name = "tipkam-si"
+version = "0.1.0"
+description = "Tipkam.si — Transkripcija govora za Windows"
+authors = ["Tipkam.si"]
+edition = "2021"
+
+[lib]
+name = "tipkam_si_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-global-shortcut = "2.3.1"
+
+[dependencies.windows-sys]
+version = ">=0.59, <=0.61"
+features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_WindowsAndMessaging",
+]
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2.4.0"
