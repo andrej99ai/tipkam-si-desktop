@@ -40,9 +40,51 @@ body {
   height: 100%;
 }
 
+/* ─── UI Language Selector ───────────────────────────────────────────────── */
+
+.ui-lang-float {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+}
+
+.ui-lang-select {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s, color 0.2s;
+  letter-spacing: 0.04em;
+}
+.ui-lang-select:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.ui-lang-select:focus {
+  border-color: var(--primary);
+}
+
+.ui-lang-header {
+  margin-right: 0.5rem;
+}
+
+.main-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 /* ─── Login Screen ───────────────────────────────────────────────────────── */
 
 .login-screen {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;

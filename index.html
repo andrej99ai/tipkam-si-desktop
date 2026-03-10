@@ -10,24 +10,33 @@
     <div id="app">
       <!-- ====== LOGIN SCREEN ====== -->
       <div id="login-screen" class="login-screen">
+        <!-- UI Language selector (top-right corner) -->
+        <div class="ui-lang-float">
+          <select id="ui-lang-login" class="ui-lang-select">
+            <option value="sl">SL</option>
+            <option value="en">EN</option>
+            <option value="it">IT</option>
+          </select>
+        </div>
+
         <div class="login-card">
           <div class="brand">
             <div class="brand-icon">PT</div>
             <h1>Perfect Text</h1>
-            <p>AI Speech-to-Text</p>
+            <p data-i18n="loginSubtitle">AI Speech-to-Text</p>
           </div>
 
-          <div class="login-separator">Nadaljuj z e-pošto</div>
+          <div class="login-separator" data-i18n="loginSeparator">Nadaljuj z e-pošto</div>
 
           <div class="form-group">
-            <label for="email">E-pošta</label>
-            <input type="email" id="email" placeholder="vas@email.com" autocomplete="email" spellcheck="false" />
+            <label for="email" data-i18n="emailLabel">E-pošta</label>
+            <input type="email" id="email" data-i18n-placeholder="emailPlaceholder" placeholder="vas@email.com" autocomplete="email" spellcheck="false" />
           </div>
           <div class="form-group">
-            <label for="password">Geslo</label>
-            <input type="password" id="password" placeholder="Vaše geslo" autocomplete="current-password" />
+            <label for="password" data-i18n="passwordLabel">Geslo</label>
+            <input type="password" id="password" data-i18n-placeholder="passwordPlaceholder" placeholder="Vaše geslo" autocomplete="current-password" />
           </div>
-          <button id="login-btn" class="btn-primary">Prijava</button>
+          <button id="login-btn" class="btn-primary" data-i18n="loginButton">Prijava</button>
           <p id="login-error" class="error-msg"></p>
         </div>
       </div>
@@ -42,13 +51,21 @@
               <span class="user-info" id="user-email"></span>
             </div>
           </div>
-          <button id="logout-btn" class="btn-logout">Odjava</button>
+          <div class="main-header-right">
+            <!-- UI Language selector in header -->
+            <select id="ui-lang-main" class="ui-lang-select ui-lang-header">
+              <option value="sl">SL</option>
+              <option value="en">EN</option>
+              <option value="it">IT</option>
+            </select>
+            <button id="logout-btn" class="btn-logout" data-i18n="logoutButton">Odjava</button>
+          </div>
         </div>
 
         <div class="status-area">
           <!-- LANGUAGE SELECT -->
           <div class="setting-row">
-            <label class="setting-label" for="language-select">Jezik govora</label>
+            <label class="setting-label" for="language-select" data-i18n="speechLanguageLabel">Jezik govora</label>
             <select id="language-select" class="setting-select">
               <!-- Populated by JS -->
             </select>
@@ -56,21 +73,21 @@
 
           <!-- MODE TOGGLE (only visible for Slovenian) -->
           <div id="mode-toggle" class="mode-toggle-section">
-            <span class="mode-toggle-label">Način prepisa</span>
+            <span class="mode-toggle-label" data-i18n="modeLabel">Način prepisa</span>
             <div class="mode-toggle">
-              <button id="mode-accurate-btn" class="mode-btn active" title="Natančno oblikovano besedilo (Gemini Pro)">
+              <button id="mode-accurate-btn" class="mode-btn active" data-i18n-title="modeAccurateTooltip" title="Natančno oblikovano besedilo (Gemini Pro)">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="10"/>
                   <circle cx="12" cy="12" r="6"/>
                   <circle cx="12" cy="12" r="2"/>
                 </svg>
-                Natančno
+                <span data-i18n="modeAccurate">Natančno</span>
               </button>
-              <button id="mode-fast-btn" class="mode-btn" title="Hiter surov prepis govora (Gemini Flash)">
+              <button id="mode-fast-btn" class="mode-btn" data-i18n-title="modeFastTooltip" title="Hiter surov prepis govora (Gemini Flash)">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                 </svg>
-                Hitro
+                <span data-i18n="modeFast">Hitro</span>
               </button>
             </div>
           </div>
@@ -83,12 +100,12 @@
 
           <div class="shortcut-hint">
             <kbd class="key" id="shortcut-key">F2</kbd>
-            <span>za začetek / ustavitev narekovanja</span>
+            <span data-i18n="shortcutHint">za začetek / ustavitev narekovanja</span>
           </div>
 
           <!-- LAST TRANSCRIPT -->
           <div id="last-transcript" class="last-transcript" style="display:none">
-            <label>ZADNJI TRANSKRIPT:</label>
+            <label data-i18n="lastTranscriptLabel">ZADNJI TRANSKRIPT:</label>
             <p id="last-transcript-text"></p>
           </div>
         </div>
@@ -96,7 +113,7 @@
         <!-- SETTINGS -->
         <div class="settings-panel">
           <div class="setting-row">
-            <label class="setting-label" for="shortcut-select">Bližnjica</label>
+            <label class="setting-label" for="shortcut-select" data-i18n="shortcutLabel">Bližnjica</label>
             <select id="shortcut-select" class="setting-select setting-select-small">
               <option value="F2">F2</option>
               <option value="F3">F3</option>
@@ -118,9 +135,9 @@
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path d="M19 11H5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
-            Minimiziraj v tray
+            <span data-i18n="minimizeButton">Minimiziraj v tray</span>
           </button>
-          <p class="footer-hint">Aplikacija bo delovala v ozadju. Pritisni bližnjico kadarkoli.</p>
+          <p class="footer-hint" data-i18n="footerHint">Aplikacija bo delovala v ozadju. Pritisni bližnjico kadarkoli.</p>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { startRecording, stopRecording, isRecording } from "./recorder";
 import { processDictation, DictationMode } from "./dictation";
 import { LANGUAGES, isSlovenian } from "./languages";
+import { t, setUILanguage, getUILanguage, UILanguage, UI_LANGUAGES } from "./i18n";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
@@ -26,6 +27,8 @@ const modeToggle = document.getElementById("mode-toggle") as HTMLDivElement;
 const languageSelect = document.getElementById("language-select") as HTMLSelectElement;
 const shortcutSelect = document.getElementById("shortcut-select") as HTMLSelectElement;
 const shortcutDisplay = document.getElementById("shortcut-key") as HTMLElement;
+const uiLangLogin = document.getElementById("ui-lang-login") as HTMLSelectElement;
+const uiLangMain = document.getElementById("ui-lang-main") as HTMLSelectElement;
 
 // ─── State ──────────────────────────────────────────────────────────────────
 let isLoggedIn = false;
@@ -45,6 +48,9 @@ function loadSettings() {
       if (settings.language) currentLanguage = settings.language;
       if (settings.mode) currentMode = settings.mode;
       if (settings.shortcut) currentShortcut = settings.shortcut;
+      if (settings.uiLanguage && ["sl", "en", "it"].includes(settings.uiLanguage)) {
+        setUILanguage(settings.uiLanguage as UILanguage);
+      }
     }
   } catch (e) {
     // ignore
@@ -59,11 +65,64 @@ function saveSettings() {
         language: currentLanguage,
         mode: currentMode,
         shortcut: currentShortcut,
+        uiLanguage: getUILanguage(),
       })
     );
   } catch (e) {
     // ignore
   }
+}
+
+// ─── Apply translations to all UI elements ──────────────────────────────────
+function applyTranslations() {
+  const tr = t();
+
+  // Update all elements with data-i18n attribute
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.getAttribute("data-i18n") as string;
+    const value = (tr as any)[key];
+    if (typeof value === "string") {
+      el.textContent = value;
+    }
+  });
+
+  // Update placeholders
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    const key = el.getAttribute("data-i18n-placeholder") as string;
+    const value = (tr as any)[key];
+    if (typeof value === "string") {
+      (el as HTMLInputElement).placeholder = value;
+    }
+  });
+
+  // Update titles (tooltips)
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+    const key = el.getAttribute("data-i18n-title") as string;
+    const value = (tr as any)[key];
+    if (typeof value === "string") {
+      (el as HTMLElement).title = value;
+    }
+  });
+
+  // Update dynamic status text (if currently in ready state)
+  if (!isRecording() && !isProcessing && isLoggedIn) {
+    setStatus("ready");
+  }
+
+  // Update HTML lang attribute
+  document.documentElement.lang = getUILanguage();
+}
+
+// ─── UI Language change handler ─────────────────────────────────────────────
+function handleUILanguageChange(newLang: UILanguage) {
+  setUILanguage(newLang);
+
+  // Sync both selectors
+  if (uiLangLogin) uiLangLogin.value = newLang;
+  if (uiLangMain) uiLangMain.value = newLang;
+
+  applyTranslations();
+  saveSettings();
 }
 
 // ─── Populate language dropdown ─────────────────────────────────────────────
@@ -130,7 +189,7 @@ async function handleShortcutChange() {
   } catch (err: any) {
     // Revert dropdown if shortcut failed
     shortcutSelect.value = currentShortcut;
-    setStatus("error", `Bližnjica ${newShortcut} ni na voljo`);
+    setStatus("error", t().shortcutUnavailable(newShortcut));
     setTimeout(() => setStatus("ready"), 3000);
   }
 }
@@ -190,40 +249,41 @@ function setStatus(
 ) {
   statusDot.className = "status-dot " + state;
   const key = currentShortcut;
+  const tr = t();
 
   switch (state) {
     case "ready":
-      statusText.textContent = `Pripravljen — pritisni ${key} za narekovanje`;
+      statusText.textContent = tr.statusReady(key);
       setTrayColor("green");
-      setTrayTooltip(`Perfect Text — Pripravljen (${key})`);
+      setTrayTooltip(tr.trayReady(key));
       hideOverlay();
       break;
     case "recording":
-      statusText.textContent = `Snemam... Pritisni ${key} za ustavitev`;
+      statusText.textContent = tr.statusRecording(key);
       setTrayColor("red");
-      setTrayTooltip("SNEMAM...");
+      setTrayTooltip(tr.trayRecording);
       showOverlay("#dc2626");
       playSound("start");
       break;
     case "processing":
-      statusText.textContent = "Obdelujem narekovanje...";
+      statusText.textContent = tr.statusProcessing;
       setTrayColor("yellow");
-      setTrayTooltip("Obdelujem...");
+      setTrayTooltip(tr.trayProcessing);
       showOverlay("#d97706");
       playSound("stop");
       break;
     case "done":
-      statusText.textContent = msg || "Besedilo prilepljeno!";
+      statusText.textContent = msg || tr.statusDone;
       setTrayColor("green");
-      setTrayTooltip("Prilepljeno!");
+      setTrayTooltip(tr.trayDone);
       showOverlay("#16a34a");
       playSound("success");
       setTimeout(() => hideOverlay(), 2000);
       break;
     case "error":
-      statusText.textContent = msg || "Napaka";
+      statusText.textContent = msg || tr.statusError;
       setTrayColor("green");
-      setTrayTooltip("Napaka");
+      setTrayTooltip(tr.trayError);
       showOverlay("#dc2626");
       playSound("error");
       setTimeout(() => hideOverlay(), 4000);
@@ -233,28 +293,29 @@ function setStatus(
 
 // ─── Login / Logout ─────────────────────────────────────────────────────────
 async function handleLogin() {
+  const tr = t();
   const email = emailInput.value.trim();
   const password = passwordInput.value;
   if (!email || !password) {
-    loginError.textContent = "Vnesite email in geslo.";
+    loginError.textContent = tr.loginErrorEmpty;
     return;
   }
   loginBtn.disabled = true;
-  loginBtn.textContent = "Prijavljam...";
+  loginBtn.textContent = tr.loginButtonLoading;
   loginError.textContent = "";
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   loginBtn.disabled = false;
-  loginBtn.textContent = "Prijava";
+  loginBtn.textContent = tr.loginButton;
 
   if (error) {
     if (error.message.includes("Invalid login credentials")) {
-      loginError.textContent = "Napačen email ali geslo.";
+      loginError.textContent = tr.loginErrorInvalid;
     } else if (error.message.includes("Email not confirmed")) {
-      loginError.textContent = "Email ni potrjen.";
+      loginError.textContent = tr.loginErrorEmailNotConfirmed;
     } else {
-      loginError.textContent = `Napaka: ${error.message}`;
+      loginError.textContent = tr.loginErrorGeneric(error.message);
     }
     return;
   }
@@ -282,14 +343,14 @@ async function handleShortcutPress() {
       const audioBase64 = await stopRecording();
       const result = await processDictation(audioBase64, currentMode, currentLanguage);
       await invoke("copy_and_paste", { text: result.final_text });
-      setStatus("done", "Besedilo prilepljeno!");
+      setStatus("done", t().statusDone);
       showLastTranscript(result.final_text);
       setTimeout(() => {
         if (!isRecording()) setStatus("ready");
       }, 4000);
     } catch (err: any) {
       console.error("Dictation error:", err);
-      setStatus("error", err.message || "Napaka pri obdelavi");
+      setStatus("error", err.message || t().statusError);
       setTimeout(() => setStatus("ready"), 5000);
     } finally {
       isProcessing = false;
@@ -304,7 +365,7 @@ async function handleShortcutPress() {
     } catch (err: any) {
       console.error("Recording start error:", err);
       await bringWindowToFront();
-      setStatus("error", "Mikrofon ni dostopen — odobri dovoljenje v oknu");
+      setStatus("error", t().micError);
       setTimeout(() => setStatus("ready"), 5000);
     }
   }
@@ -339,6 +400,18 @@ if (modeAccurateBtn) modeAccurateBtn.addEventListener("click", () => setMode("ac
 if (languageSelect) languageSelect.addEventListener("change", handleLanguageChange);
 if (shortcutSelect) shortcutSelect.addEventListener("change", handleShortcutChange);
 
+// UI language selectors
+if (uiLangLogin) {
+  uiLangLogin.addEventListener("change", () => {
+    handleUILanguageChange(uiLangLogin.value as UILanguage);
+  });
+}
+if (uiLangMain) {
+  uiLangMain.addEventListener("change", () => {
+    handleUILanguageChange(uiLangMain.value as UILanguage);
+  });
+}
+
 // Listen for shortcut event from Rust backend
 listen("shortcut-pressed", () => {
   handleShortcutPress();
@@ -348,6 +421,14 @@ listen("shortcut-pressed", () => {
 async function init() {
   loadSettings();
   populateLanguages();
+
+  // Sync UI language selectors with saved value
+  const uiLang = getUILanguage();
+  if (uiLangLogin) uiLangLogin.value = uiLang;
+  if (uiLangMain) uiLangMain.value = uiLang;
+
+  // Apply translations
+  applyTranslations();
 
   // Apply saved shortcut to dropdown
   if (shortcutSelect) shortcutSelect.value = currentShortcut;
