@@ -8,9 +8,6 @@ export const LANGUAGES: Language[] = [
   // ── Privzeto ──
   { code: "sl", name: "Slovenščina", group: "Privzeto" },
 
-  // ── Posebna možnost ──
-  { code: "auto", name: "Auto-detect language", group: "Samodejno" },
-
   // ── Najbolj priljubljeni (popularnost 10) ──
   { code: "en", name: "English", group: "Najbolj priljubljeni" },
   { code: "es", name: "Spanish", group: "Najbolj priljubljeni" },
