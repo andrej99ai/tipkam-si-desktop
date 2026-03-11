@@ -6,6 +6,8 @@ export type UILanguage = "sl" | "en" | "it";
 export interface Translations {
   // Login screen
   loginSubtitle: string;
+  loginGoogleButton: string;
+  loginGoogleLoading: string;
   loginSeparator: string;
   emailLabel: string;
   emailPlaceholder: string;
@@ -64,7 +66,9 @@ export interface Translations {
 
 const sl: Translations = {
   loginSubtitle: "AI Speech-to-Text",
-  loginSeparator: "Nadaljuj z e-pošto",
+  loginGoogleButton: "Nadaljuj z Googlom",
+  loginGoogleLoading: "Odpiranje brskalnika...",
+  loginSeparator: "Ali nadaljuj z e-pošto",
   emailLabel: "E-pošta",
   emailPlaceholder: "vas@email.com",
   passwordLabel: "Geslo",
@@ -114,7 +118,9 @@ const sl: Translations = {
 
 const en: Translations = {
   loginSubtitle: "AI Speech-to-Text",
-  loginSeparator: "Continue with email",
+  loginGoogleButton: "Continue with Google",
+  loginGoogleLoading: "Opening browser...",
+  loginSeparator: "Or continue with email",
   emailLabel: "Email",
   emailPlaceholder: "you@email.com",
   passwordLabel: "Password",
@@ -164,7 +170,9 @@ const en: Translations = {
 
 const it: Translations = {
   loginSubtitle: "AI Speech-to-Text",
-  loginSeparator: "Continua con email",
+  loginGoogleButton: "Continua con Google",
+  loginGoogleLoading: "Apertura del browser...",
+  loginSeparator: "Oppure continua con email",
   emailLabel: "Email",
   emailPlaceholder: "tuo@email.com",
   passwordLabel: "Password",

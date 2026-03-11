@@ -51,5 +51,12 @@
     "shortDescription": "Perfect Text — AI Speech-to-Text",
     "longDescription": "Desktop aplikacija za transkripcijo govora v besedilo. Deluje kjerkoli na Windows računalniku."
   },
-  "identifier": "si.tipkam.desktop"
+  "identifier": "si.tipkam.desktop",
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["perfecttext"]
+      }
+    }
+  }
 }

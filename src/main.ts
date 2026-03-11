@@ -6,6 +6,8 @@ import { t, setUILanguage, getUILanguage, UILanguage, UI_LANGUAGES } from "./i18
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-shell";
+import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
 
 // ─── DOM Elements ───────────────────────────────────────────────────────────
 const loginScreen = document.getElementById("login-screen") as HTMLDivElement;
@@ -13,6 +15,7 @@ const mainScreen = document.getElementById("main-screen") as HTMLDivElement;
 const emailInput = document.getElementById("email") as HTMLInputElement;
 const passwordInput = document.getElementById("password") as HTMLInputElement;
 const loginBtn = document.getElementById("login-btn") as HTMLButtonElement;
+const googleLoginBtn = document.getElementById("google-login-btn") as HTMLButtonElement;
 const loginError = document.getElementById("login-error") as HTMLParagraphElement;
 const userEmail = document.getElementById("user-email") as HTMLSpanElement;
 const logoutBtn = document.getElementById("logout-btn") as HTMLButtonElement;
@@ -291,7 +294,105 @@ function setStatus(
   }
 }
 
-// ─── Login / Logout ─────────────────────────────────────────────────────────
+// ─── Google OAuth Login ─────────────────────────────────────────────────────
+async function handleGoogleLogin() {
+  const tr = t();
+  const googleBtnText = googleLoginBtn.querySelector("[data-i18n]") as HTMLSpanElement;
+
+  googleLoginBtn.disabled = true;
+  if (googleBtnText) googleBtnText.textContent = tr.loginGoogleLoading;
+  loginError.textContent = "";
+
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        skipBrowserRedirect: true,
+        redirectTo: "perfecttext://auth-callback",
+      },
+    });
+
+    if (error) throw error;
+    if (data?.url) {
+      // Open the OAuth URL in the user's default browser
+      await open(data.url);
+    }
+  } catch (err: any) {
+    console.error("Google OAuth error:", err);
+    loginError.textContent = tr.loginErrorGeneric(err.message || "Google login failed");
+  } finally {
+    googleLoginBtn.disabled = false;
+    if (googleBtnText) googleBtnText.textContent = tr.loginGoogleButton;
+  }
+}
+
+// ─── Handle deep link callback from OAuth ───────────────────────────────────
+async function handleDeepLinkCallback(url: string) {
+  console.log("Deep link received:", url);
+
+  // Bring the app window to front
+  await bringWindowToFront();
+
+  try {
+    // The URL can be in two forms:
+    // 1. PKCE flow: perfecttext://auth-callback?code=xxx (code in query string)
+    // 2. Implicit flow: perfecttext://auth-callback#access_token=xxx&refresh_token=xxx (tokens in hash)
+
+    // Parse the URL — deep link URLs may not parse correctly with new URL(),
+    // so we handle both cases manually
+    const urlStr = url.replace("perfecttext://auth-callback", "https://placeholder");
+    const parsed = new URL(urlStr);
+
+    // Try PKCE flow first (code in query params)
+    const code = parsed.searchParams.get("code");
+    if (code) {
+      console.log("Exchanging auth code for session...");
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) throw error;
+      if (data?.user) {
+        showMain(data.user.email ?? "");
+        return;
+      }
+    }
+
+    // Try implicit flow (tokens in hash fragment)
+    const hashStr = url.includes("#") ? url.split("#")[1] : "";
+    if (hashStr) {
+      const hashParams = new URLSearchParams(hashStr);
+      const access_token = hashParams.get("access_token");
+      const refresh_token = hashParams.get("refresh_token");
+      if (access_token && refresh_token) {
+        console.log("Setting session from tokens...");
+        const { data, error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+        if (error) throw error;
+        if (data?.user) {
+          showMain(data.user.email ?? "");
+          return;
+        }
+      }
+    }
+
+    // If we get here, check if there's an error in the URL
+    const errorDesc = parsed.searchParams.get("error_description") || parsed.searchParams.get("error");
+    if (errorDesc) {
+      throw new Error(errorDesc);
+    }
+
+    // Fallback: check current session (maybe Supabase handled it)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      showMain(session.user.email ?? "");
+    }
+  } catch (err: any) {
+    console.error("OAuth callback error:", err);
+    loginError.textContent = t().loginErrorGeneric(err.message || "Auth failed");
+  }
+}
+
+// ─── Email/Password Login ───────────────────────────────────────────────────
 async function handleLogin() {
   const tr = t();
   const email = emailInput.value.trim();
@@ -387,6 +488,7 @@ async function handleMinimize() {
 
 // ─── Event listeners ────────────────────────────────────────────────────────
 loginBtn.addEventListener("click", handleLogin);
+googleLoginBtn.addEventListener("click", handleGoogleLogin);
 passwordInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") handleLogin();
 });
@@ -415,6 +517,15 @@ if (uiLangMain) {
 // Listen for shortcut event from Rust backend
 listen("shortcut-pressed", () => {
   handleShortcutPress();
+});
+
+// ─── Deep link listener for OAuth callback ──────────────────────────────────
+onOpenUrl((urls: string[]) => {
+  for (const url of urls) {
+    if (url.startsWith("perfecttext://auth-callback")) {
+      handleDeepLinkCallback(url);
+    }
+  }
 });
 
 // ─── Init ───────────────────────────────────────────────────────────────────
