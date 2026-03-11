@@ -225,12 +225,20 @@ fn change_shortcut(app: tauri::AppHandle, shortcut_str: String) -> Result<String
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             // If user tries to open a second instance, bring existing window to front
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.unminimize();
                 let _ = w.show();
                 let _ = w.set_focus();
+            }
+            // Forward deep link URLs from the second instance to the frontend
+            // When a deep link opens, Windows launches a new instance with the URL as argument.
+            // The single-instance plugin intercepts this and passes the args here.
+            for arg in &args {
+                if arg.starts_with("perfecttext://") {
+                    let _ = app.emit("deep-link-received", arg.clone());
+                }
             }
         }))
         .plugin(tauri_plugin_deep_link::init())

@@ -519,12 +519,23 @@ listen("shortcut-pressed", () => {
   handleShortcutPress();
 });
 
-// ─── Deep link listener for OAuth callback ──────────────────────────────────
+// ─── Deep link listeners for OAuth callback ─────────────────────────────────
+// Method 1: deep-link plugin (for fresh app launch via deep link)
 onOpenUrl((urls: string[]) => {
   for (const url of urls) {
     if (url.startsWith("perfecttext://auth-callback")) {
       handleDeepLinkCallback(url);
     }
+  }
+});
+
+// Method 2: single-instance plugin forwards deep link from second instance
+// When the app is already running and a deep link opens, Windows tries to launch
+// a new instance. The single-instance plugin intercepts it and emits this event.
+listen("deep-link-received", (event) => {
+  const url = event.payload as string;
+  if (url.startsWith("perfecttext://auth-callback")) {
+    handleDeepLinkCallback(url);
   }
 });
 
