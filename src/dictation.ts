@@ -7,6 +7,54 @@ export interface DictationResult {
   final_text: string;
 }
 
+/** Error types for smarter UI messages */
+export type DictationErrorType = "timeout" | "quota" | "auth" | "generic";
+
+export class DictationError extends Error {
+  type: DictationErrorType;
+  constructor(message: string, type: DictationErrorType = "generic") {
+    super(message);
+    this.type = type;
+  }
+}
+
+/** Wrap a promise with a timeout (ms) */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new DictationError("timeout", "timeout")), ms);
+    promise
+      .then((val) => { clearTimeout(timer); resolve(val); })
+      .catch((err) => { clearTimeout(timer); reject(err); });
+  });
+}
+
+/** Detect error type from Supabase Edge Function response */
+function classifyError(error: any, data: any): DictationError {
+  const msg = error?.message?.toLowerCase() || "";
+  const dataMsg = (data?.error || data?.message || "").toLowerCase();
+  const combined = msg + " " + dataMsg;
+
+  // Quota / limit exceeded
+  if (combined.includes("limit") || combined.includes("quota") ||
+      combined.includes("exceeded") || combined.includes("minute") ||
+      combined.includes("upgrade") || combined.includes("presegel") ||
+      combined.includes("nadgrad")) {
+    return new DictationError(combined, "quota");
+  }
+
+  // Auth / session expired
+  if (combined.includes("auth") || combined.includes("jwt") ||
+      combined.includes("token") || combined.includes("expired") ||
+      combined.includes("unauthorized") || combined.includes("401") ||
+      combined.includes("invalid claim")) {
+    return new DictationError(combined, "auth");
+  }
+
+  return new DictationError(error?.message || "Unknown error", "generic");
+}
+
+const TRANSCRIPTION_TIMEOUT_MS = 60_000; // 60 seconds
+
 /**
  * Pošlje avdio na Supabase Edge Function za transkripcijo.
  *
@@ -22,7 +70,8 @@ export interface DictationResult {
 export async function processDictation(
   audioBase64: string,
   mode: DictationMode,
-  languageCode: string = "sl"
+  languageCode: string = "sl",
+  durationSeconds?: number
 ): Promise<DictationResult> {
   const isSlovenian = languageCode === "sl";
 
@@ -39,15 +88,37 @@ export async function processDictation(
   }
   // Za slovenščino brez "mode" = accurate (privzeto v Edge Function)
 
-  const { data, error } = await supabase.functions.invoke("voice-to-text", {
-    body,
-  });
+  // Pošlji trajanje snemanja za natančno beleženje porabe
+  if (durationSeconds !== undefined && durationSeconds > 0) {
+    body.duration_seconds = durationSeconds;
+  }
+
+  let data: any;
+  let error: any;
+
+  try {
+    const result = await withTimeout(
+      supabase.functions.invoke("voice-to-text", { body }),
+      TRANSCRIPTION_TIMEOUT_MS
+    );
+    data = result.data;
+    error = result.error;
+  } catch (err: any) {
+    if (err instanceof DictationError && err.type === "timeout") {
+      throw err; // re-throw timeout as-is
+    }
+    throw classifyError(err, null);
+  }
 
   if (error) {
-    throw new Error(`Napaka pri transkripciji: ${error.message}`);
+    throw classifyError(error, data);
   }
   if (!data || !data.text) {
-    throw new Error("Ni prejetega transkripta od strežnika.");
+    // No transcript returned — could be quota issue (backend returned empty)
+    if (data && (data.error || data.message)) {
+      throw classifyError({ message: data.error || data.message }, data);
+    }
+    throw new DictationError("Ni prejetega transkripta od strežnika.", "quota");
   }
 
   const rawTranscript = data.text as string;

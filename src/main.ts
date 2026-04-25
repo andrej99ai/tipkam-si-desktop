@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 import { startRecording, stopRecording, isRecording } from "./recorder";
-import { processDictation, DictationMode } from "./dictation";
+import { processDictation, DictationMode, DictationError } from "./dictation";
 import { LANGUAGES, isSlovenian } from "./languages";
 import { t, setUILanguage, getUILanguage, UILanguage, UI_LANGUAGES } from "./i18n";
 import { listen } from "@tauri-apps/api/event";
@@ -21,7 +21,6 @@ const userEmail = document.getElementById("user-email") as HTMLSpanElement;
 const logoutBtn = document.getElementById("logout-btn") as HTMLButtonElement;
 const statusDot = document.getElementById("status-dot") as HTMLDivElement;
 const statusText = document.getElementById("status-text") as HTMLParagraphElement;
-const minimizeBtn = document.getElementById("minimize-btn") as HTMLButtonElement;
 const lastTranscript = document.getElementById("last-transcript") as HTMLDivElement;
 const lastTranscriptText = document.getElementById("last-transcript-text") as HTMLParagraphElement;
 const modeFastBtn = document.getElementById("mode-fast-btn") as HTMLButtonElement;
@@ -32,6 +31,14 @@ const shortcutSelect = document.getElementById("shortcut-select") as HTMLSelectE
 const shortcutDisplay = document.getElementById("shortcut-key") as HTMLElement;
 const uiLangLogin = document.getElementById("ui-lang-login") as HTMLSelectElement;
 const uiLangMain = document.getElementById("ui-lang-main") as HTMLSelectElement;
+const errorPanel = document.getElementById("error-panel") as HTMLDivElement;
+const errorPanelSubtitle = document.getElementById("error-panel-subtitle") as HTMLParagraphElement;
+const errorStepWeb = document.getElementById("error-step-web") as HTMLDivElement;
+const errorStepDesktop = document.getElementById("error-step-desktop") as HTMLDivElement;
+const errorPanelDivider = document.getElementById("error-panel-divider") as HTMLDivElement;
+const btnOpenProfile = document.getElementById("btn-open-profile") as HTMLButtonElement;
+const btnErrorLogout = document.getElementById("btn-error-logout") as HTMLButtonElement;
+const btnErrorDismiss = document.getElementById("btn-error-dismiss") as HTMLButtonElement;
 
 // ─── State ──────────────────────────────────────────────────────────────────
 let isLoggedIn = false;
@@ -197,10 +204,7 @@ async function handleShortcutChange() {
   }
 }
 
-// ─── Sound / Tray / Overlay helpers ─────────────────────────────────────────
-async function playSound(soundType: string) {
-  try { await invoke("play_sound", { soundType }); } catch (e) { /* */ }
-}
+// ─── Tray / Overlay helpers ─────────────────────────────────────────────────
 async function setTrayColor(color: string) {
   try { await invoke("set_tray_icon", { color }); } catch (e) { /* */ }
 }
@@ -260,27 +264,25 @@ function setStatus(
       setTrayColor("green");
       setTrayTooltip(tr.trayReady(key));
       hideOverlay();
+      errorPanel.style.display = "none";
       break;
     case "recording":
       statusText.textContent = tr.statusRecording(key);
       setTrayColor("red");
       setTrayTooltip(tr.trayRecording);
       showOverlay("#dc2626");
-      playSound("start");
       break;
     case "processing":
       statusText.textContent = tr.statusProcessing;
       setTrayColor("yellow");
       setTrayTooltip(tr.trayProcessing);
       showOverlay("#d97706");
-      playSound("stop");
       break;
     case "done":
       statusText.textContent = msg || tr.statusDone;
       setTrayColor("green");
       setTrayTooltip(tr.trayDone);
       showOverlay("#16a34a");
-      playSound("success");
       setTimeout(() => hideOverlay(), 2000);
       break;
     case "error":
@@ -288,7 +290,6 @@ function setStatus(
       setTrayColor("green");
       setTrayTooltip(tr.trayError);
       showOverlay("#dc2626");
-      playSound("error");
       setTimeout(() => hideOverlay(), 4000);
       break;
   }
@@ -441,8 +442,8 @@ async function handleShortcutPress() {
     isProcessing = true;
     setStatus("processing");
     try {
-      const audioBase64 = await stopRecording();
-      const result = await processDictation(audioBase64, currentMode, currentLanguage);
+      const { audioBase64, durationSeconds } = await stopRecording();
+      const result = await processDictation(audioBase64, currentMode, currentLanguage, durationSeconds);
       await invoke("copy_and_paste", { text: result.final_text });
       setStatus("done", t().statusDone);
       showLastTranscript(result.final_text);
@@ -451,8 +452,9 @@ async function handleShortcutPress() {
       }, 4000);
     } catch (err: any) {
       console.error("Dictation error:", err);
-      setStatus("error", err.message || t().statusError);
-      setTimeout(() => setStatus("ready"), 5000);
+      await bringWindowToFront();
+      setStatus("error");
+      showErrorPanel(err instanceof DictationError ? err : undefined);
     } finally {
       isProcessing = false;
     }
@@ -472,6 +474,65 @@ async function handleShortcutPress() {
   }
 }
 
+// ─── Error panel ───────────────────────────────────────────────────────────
+function showErrorPanel(err?: DictationError) {
+  const tr = t();
+  const type = err?.type ?? "generic";
+
+  // Reset to all-visible state, then narrow down based on type.
+  errorStepWeb.style.display = "";
+  errorStepDesktop.style.display = "";
+  errorPanelDivider.style.display = "";
+  errorPanelSubtitle.textContent = tr.errorPanelSubtitle;
+
+  switch (type) {
+    case "timeout":
+      // Network/server slow — no actionable steps, just message + Close.
+      errorPanelSubtitle.textContent = tr.errorTimeout;
+      errorStepWeb.style.display = "none";
+      errorStepDesktop.style.display = "none";
+      errorPanelDivider.style.display = "none";
+      break;
+    case "quota":
+      // Limit exceeded — only the "check profile" step is relevant.
+      errorPanelSubtitle.textContent = tr.errorQuota;
+      errorStepDesktop.style.display = "none";
+      errorPanelDivider.style.display = "none";
+      break;
+    case "auth":
+      // Session expired — only the "sign out and back in" step is relevant.
+      errorPanelSubtitle.textContent = tr.errorSessionExpired;
+      errorStepWeb.style.display = "none";
+      errorPanelDivider.style.display = "none";
+      break;
+    case "generic":
+    default:
+      // Unknown error — show both steps with default subtitle.
+      break;
+  }
+
+  errorPanel.style.display = "block";
+  // Hide last transcript while error is shown
+  if (lastTranscript) lastTranscript.style.display = "none";
+}
+
+function hideErrorPanel() {
+  errorPanel.style.display = "none";
+  setStatus("ready");
+}
+
+btnErrorDismiss.addEventListener("click", hideErrorPanel);
+
+btnOpenProfile.addEventListener("click", async () => {
+  try { await open("https://tipkam.si/"); } catch (e) { /* */ }
+});
+
+btnErrorLogout.addEventListener("click", async () => {
+  hideErrorPanel();
+  await supabase.auth.signOut();
+  showLogin();
+});
+
 // ─── Last transcript display ────────────────────────────────────────────────
 function showLastTranscript(text: string) {
   if (lastTranscript && lastTranscriptText) {
@@ -479,11 +540,6 @@ function showLastTranscript(text: string) {
     lastTranscriptText.textContent =
       text.length > 300 ? text.substring(0, 300) + "..." : text;
   }
-}
-
-// ─── Minimize handler ───────────────────────────────────────────────────────
-async function handleMinimize() {
-  await getCurrentWindow().minimize();
 }
 
 // ─── Event listeners ────────────────────────────────────────────────────────
@@ -496,7 +552,6 @@ emailInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") passwordInput.focus();
 });
 logoutBtn.addEventListener("click", handleLogout);
-if (minimizeBtn) minimizeBtn.addEventListener("click", handleMinimize);
 if (modeFastBtn) modeFastBtn.addEventListener("click", () => setMode("fast"));
 if (modeAccurateBtn) modeAccurateBtn.addEventListener("click", () => setMode("accurate"));
 if (languageSelect) languageSelect.addEventListener("change", handleLanguageChange);

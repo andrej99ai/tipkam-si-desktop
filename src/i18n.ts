@@ -45,7 +45,6 @@ export interface Translations {
   shortcutLabel: string;
 
   // Footer
-  minimizeButton: string;
   footerHint: string;
 
   // Tray
@@ -62,6 +61,23 @@ export interface Translations {
 
   // Shortcut change error
   shortcutUnavailable: (key: string) => string;
+
+  // Dictation error messages
+  errorTimeout: string;
+  errorQuota: string;
+  errorSessionExpired: string;
+  errorGeneric: string;
+
+  // Error panel
+  errorPanelTitle: string;
+  errorPanelSubtitle: string;
+  errorStepWebLabel: string;
+  errorStepWebDesc: string;
+  errorBtnProfile: string;
+  errorStepDesktopLabel: string;
+  errorStepDesktopDesc: string;
+  errorBtnLogout: string;
+  errorBtnDismiss: string;
 }
 
 const sl: Translations = {
@@ -100,8 +116,7 @@ const sl: Translations = {
 
   shortcutLabel: "Bližnjica",
 
-  minimizeButton: "Minimiziraj v tray",
-  footerHint: "Aplikacija bo delovala v ozadju. Pritisni bližnjico kadarkoli.",
+  footerHint: "Pritisni bližnjico kadarkoli za narekovanje.",
 
   trayReady: (key) => `Perfect Text — Pripravljen (${key})`,
   trayRecording: "SNEMAM...",
@@ -114,6 +129,21 @@ const sl: Translations = {
   uiLanguageLabel: "Jezik vmesnika",
 
   shortcutUnavailable: (key) => `Bližnjica ${key} ni na voljo`,
+
+  errorTimeout: "Strežnik ni odgovoril pravočasno. Poskusi znova ali preveri povezavo.",
+  errorQuota: "Minutna kvota je porabljena. Nadgradi naročnino na tipkam.si.",
+  errorSessionExpired: "Seja je potekla. Odjavi se in se znova prijavi.",
+  errorGeneric: "Napaka pri obdelavi. Poskusi znova.",
+
+  errorPanelTitle: "Narekovanja ni bilo mogoče obdelati",
+  errorPanelSubtitle: "Poskusi znova. Če se napaka ponavlja:",
+  errorStepWebLabel: "V spletni aplikaciji",
+  errorStepWebDesc: "Preveri mesečni limit v svojem profilu.",
+  errorBtnProfile: "Odpri spletni profil",
+  errorStepDesktopLabel: "V namizni aplikaciji",
+  errorStepDesktopDesc: "Odjavi se in se ponovno prijavi.",
+  errorBtnLogout: "Odjavi me",
+  errorBtnDismiss: "Zapri",
 };
 
 const en: Translations = {
@@ -152,8 +182,7 @@ const en: Translations = {
 
   shortcutLabel: "Shortcut",
 
-  minimizeButton: "Minimize to tray",
-  footerHint: "The app will keep running in the background. Press the shortcut anytime.",
+  footerHint: "Press the shortcut anytime to dictate.",
 
   trayReady: (key) => `Perfect Text — Ready (${key})`,
   trayRecording: "RECORDING...",
@@ -166,6 +195,21 @@ const en: Translations = {
   uiLanguageLabel: "Interface language",
 
   shortcutUnavailable: (key) => `Shortcut ${key} is not available`,
+
+  errorTimeout: "Server did not respond in time. Try again or check your connection.",
+  errorQuota: "Your minutes are used up. Upgrade your plan at tipkam.si.",
+  errorSessionExpired: "Session expired. Please sign out and sign in again.",
+  errorGeneric: "Processing error. Please try again.",
+
+  errorPanelTitle: "Dictation could not be processed",
+  errorPanelSubtitle: "Try again. If the error persists:",
+  errorStepWebLabel: "In the web app",
+  errorStepWebDesc: "Check your monthly limit in your profile.",
+  errorBtnProfile: "Open web profile",
+  errorStepDesktopLabel: "In the desktop app",
+  errorStepDesktopDesc: "Sign out and sign back in.",
+  errorBtnLogout: "Sign me out",
+  errorBtnDismiss: "Close",
 };
 
 const it: Translations = {
@@ -204,8 +248,7 @@ const it: Translations = {
 
   shortcutLabel: "Scorciatoia",
 
-  minimizeButton: "Riduci a icona",
-  footerHint: "L'app continuerà a funzionare in background. Premi la scorciatoia in qualsiasi momento.",
+  footerHint: "Premi la scorciatoia in qualsiasi momento per dettare.",
 
   trayReady: (key) => `Perfect Text — Pronto (${key})`,
   trayRecording: "REGISTRAZIONE...",
@@ -218,6 +261,21 @@ const it: Translations = {
   uiLanguageLabel: "Lingua interfaccia",
 
   shortcutUnavailable: (key) => `Scorciatoia ${key} non disponibile`,
+
+  errorTimeout: "Il server non ha risposto in tempo. Riprova o controlla la connessione.",
+  errorQuota: "I minuti disponibili sono esauriti. Aggiorna il piano su tipkam.si.",
+  errorSessionExpired: "Sessione scaduta. Esci e accedi di nuovo.",
+  errorGeneric: "Errore di elaborazione. Riprova.",
+
+  errorPanelTitle: "Non è stato possibile elaborare la dettatura",
+  errorPanelSubtitle: "Riprova. Se l'errore persiste:",
+  errorStepWebLabel: "Nell'app web",
+  errorStepWebDesc: "Controlla il limite mensile nel tuo profilo.",
+  errorBtnProfile: "Apri profilo web",
+  errorStepDesktopLabel: "Nell'app desktop",
+  errorStepDesktopDesc: "Esci e accedi di nuovo.",
+  errorBtnLogout: "Esci",
+  errorBtnDismiss: "Chiudi",
 };
 
 const translations: Record<UILanguage, Translations> = { sl, en, it };

@@ -113,6 +113,37 @@
             <span data-i18n="shortcutHint">za začetek / ustavitev narekovanja</span>
           </div>
 
+          <!-- ERROR PANEL -->
+          <div id="error-panel" class="error-panel" style="display:none">
+            <div class="error-panel-header">
+              <span class="error-panel-icon">&#9888;</span>
+              <span id="error-panel-title" class="error-panel-title" data-i18n="errorPanelTitle">Narekovanja ni bilo mogoče obdelati</span>
+            </div>
+            <p id="error-panel-subtitle" class="error-panel-subtitle" data-i18n="errorPanelSubtitle">Poskusi znova. Če se napaka ponavlja:</p>
+            <div class="error-panel-steps">
+              <div id="error-step-web" class="error-panel-step">
+                <div class="error-step-header">
+                  <span class="error-step-num">1</span>
+                  <span class="error-step-where" data-i18n="errorStepWebLabel">V spletni aplikaciji</span>
+                </div>
+                <p class="error-step-desc" data-i18n="errorStepWebDesc">Preveri mesečni limit v svojem profilu.</p>
+                <button id="btn-open-profile" class="btn-error-action btn-error-secondary">
+                  <span data-i18n="errorBtnProfile">Odpri spletni profil</span> &#8599;
+                </button>
+              </div>
+              <div id="error-panel-divider" class="error-panel-divider"></div>
+              <div id="error-step-desktop" class="error-panel-step">
+                <div class="error-step-header">
+                  <span class="error-step-num">2</span>
+                  <span class="error-step-where" data-i18n="errorStepDesktopLabel">V namizni aplikaciji</span>
+                </div>
+                <p class="error-step-desc" data-i18n="errorStepDesktopDesc">Odjavi se in se ponovno prijavi.</p>
+                <button id="btn-error-logout" class="btn-error-action btn-error-primary" data-i18n="errorBtnLogout">Odjavi me</button>
+              </div>
+            </div>
+            <button id="btn-error-dismiss" class="btn-error-dismiss" data-i18n="errorBtnDismiss">Zapri</button>
+          </div>
+
           <!-- LAST TRANSCRIPT -->
           <div id="last-transcript" class="last-transcript" style="display:none">
             <label data-i18n="lastTranscriptLabel">ZADNJI TRANSKRIPT:</label>
@@ -141,16 +172,4 @@
         </div>
 
         <div class="main-footer">
-          <button id="minimize-btn" class="btn-minimize">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path d="M19 11H5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <span data-i18n="minimizeButton">Minimiziraj v tray</span>
-          </button>
-          <p class="footer-hint" data-i18n="footerHint">Aplikacija bo delovala v ozadju. Pritisni bližnjico kadarkoli.</p>
-        </div>
-      </div>
-    </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
-</html>
+          <p class="footer-hint" data-i18n="footerHint">Pritisni bližnjico kadarkoli za narekovanje

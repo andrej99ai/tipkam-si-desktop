@@ -51,21 +51,6 @@ struct ShortcutState2 {
 
 static LAST_F2: AtomicI64 = AtomicI64::new(0);
 
-// ─── System sounds via PowerShell ───────────────────────────────────────────
-fn play_system_sound(sound_type: &str) {
-    let script = match sound_type {
-        "start" => "[System.Media.SystemSounds]::Exclamation.Play()",
-        "stop" => "[System.Media.SystemSounds]::Asterisk.Play()",
-        "success" => "[System.Media.SystemSounds]::Asterisk.Play()",
-        "error" => "[System.Media.SystemSounds]::Hand.Play()",
-        _ => "[System.Media.SystemSounds]::Beep.Play()",
-    };
-    let _ = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", script])
-        .creation_flags(0x08000000) // CREATE_NO_WINDOW
-        .spawn();
-}
-
 // ─── Clipboard + paste via PowerShell ───────────────────────────────────────
 fn clipboard_set(text: &str) {
     let escaped = text.replace('\'', "''");
@@ -129,11 +114,6 @@ fn copy_and_paste(text: String) {
     clipboard_set(&text);
     std::thread::sleep(std::time::Duration::from_millis(200));
     simulate_ctrl_v();
-}
-
-#[tauri::command]
-fn play_sound(sound_type: String) {
-    play_system_sound(&sound_type);
 }
 
 #[tauri::command]
@@ -246,7 +226,6 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             copy_and_paste,
-            play_sound,
             set_tray_icon,
             set_tray_tooltip,
             show_overlay,
@@ -338,12 +317,12 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if window.label() == "main" {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    api.prevent_close();
-                    let _ = window.minimize();
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    window.app_handle().exit(0);
                 }
             }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
