@@ -228,7 +228,57 @@ async function bringWindowToFront() {
 }
 
 // ─── Screen management ─────────────────────────────────────────────────────
+// ─── Session heartbeat (prevents JWT expiry during background throttling) ──
+// WebView2 throttles JS timers when the window is hidden/minimized, which can
+// freeze Supabase's internal auto-refresh timer and let the JWT expire. This
+// heartbeat runs every 5 minutes and proactively refreshes the JWT if it's
+// close to expiry. The check is local (no network) unless a refresh is needed,
+// and refresh runs in the background — F2 latency is never affected.
+let sessionHeartbeatId: ReturnType<typeof setInterval> | null = null;
+const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // every 5 minutes
+const REFRESH_LEAD_TIME_SEC = 5 * 60; // refresh when <5 min until expiry
+
+async function checkAndRefreshSession() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !session.expires_at) return;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const secondsLeft = session.expires_at - nowSec;
+    if (secondsLeft < REFRESH_LEAD_TIME_SEC) {
+      // JWT is close to expiry — refresh in background
+      await supabase.auth.refreshSession();
+    }
+  } catch (e) {
+    // Network or auth failure — onAuthStateChange will handle SIGNED_OUT.
+  }
+}
+
+function startSessionHeartbeat() {
+  if (sessionHeartbeatId !== null) return;
+  // Run once immediately on login (in case JWT loaded from storage is stale)
+  checkAndRefreshSession();
+  sessionHeartbeatId = setInterval(checkAndRefreshSession, HEARTBEAT_INTERVAL_MS);
+}
+
+function stopSessionHeartbeat() {
+  if (sessionHeartbeatId !== null) {
+    clearInterval(sessionHeartbeatId);
+    sessionHeartbeatId = null;
+  }
+}
+
+// Listen for silent sign-outs (server-side session invalidation, refresh
+// failure, etc.) and bring the user back to the login screen gracefully.
+supabase.auth.onAuthStateChange((event, _session) => {
+  if (event === "SIGNED_OUT" && isLoggedIn) {
+    stopSessionHeartbeat();
+    showLogin();
+  }
+  // TOKEN_REFRESHED is handled internally by Supabase — nothing to do here.
+});
+
 function showLogin() {
+  stopSessionHeartbeat();
   loginScreen.style.display = "flex";
   mainScreen.style.display = "none";
   loginError.textContent = "";
@@ -247,6 +297,9 @@ function showMain(email: string) {
   // Apply saved settings
   setMode(currentMode);
   handleLanguageChange(); // show/hide mode toggle based on language
+
+  // Keep JWT fresh while the app is running so F2 never hits an expired token
+  startSessionHeartbeat();
 }
 
 // ─── Status management ─────────────────────────────────────────────────────
