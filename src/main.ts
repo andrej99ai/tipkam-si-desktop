@@ -165,10 +165,13 @@ function handleLanguageChange() {
   if (isSlovenian(currentLanguage)) {
     // Show mode toggle for Slovenian
     modeToggle.style.display = "block";
+    // Sync the active button with currentMode (in case user switched away
+    // from Slovenian and back — currentMode may have changed to "fast")
+    setMode(currentMode);
   } else {
     // Hide mode toggle for other languages — always use "fast"
     modeToggle.style.display = "none";
-    currentMode = "fast";
+    setMode("fast"); // also updates the (now hidden) button states for consistency
   }
   saveSettings();
 }
@@ -303,10 +306,24 @@ function showMain(email: string) {
 }
 
 // ─── Status management ─────────────────────────────────────────────────────
+// Track pending timers so a fast shortcut press in the "done"/"error" tail
+// window doesn't accidentally hide the new red overlay or reset status mid-flow.
+let statusOverlayTimer: ReturnType<typeof setTimeout> | null = null;
+function clearStatusOverlayTimer() {
+  if (statusOverlayTimer !== null) {
+    clearTimeout(statusOverlayTimer);
+    statusOverlayTimer = null;
+  }
+}
+
 function setStatus(
   state: "ready" | "recording" | "processing" | "done" | "error",
   msg?: string
 ) {
+  // Cancel any tail-window timer from a previous status — otherwise an
+  // in-flight hideOverlay could fire during a new recording.
+  clearStatusOverlayTimer();
+
   statusDot.className = "status-dot " + state;
   const key = currentShortcut;
   const tr = t();
@@ -336,14 +353,20 @@ function setStatus(
       setTrayColor("green");
       setTrayTooltip(tr.trayDone);
       showOverlay("#16a34a");
-      setTimeout(() => hideOverlay(), 2000);
+      statusOverlayTimer = setTimeout(() => {
+        statusOverlayTimer = null;
+        hideOverlay();
+      }, 2000);
       break;
     case "error":
       statusText.textContent = msg || tr.statusError;
       setTrayColor("green");
       setTrayTooltip(tr.trayError);
       showOverlay("#dc2626");
-      setTimeout(() => hideOverlay(), 4000);
+      statusOverlayTimer = setTimeout(() => {
+        statusOverlayTimer = null;
+        hideOverlay();
+      }, 4000);
       break;
   }
 }

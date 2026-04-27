@@ -30,8 +30,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 /** Detect error type from Supabase Edge Function response */
 function classifyError(error: any, data: any): DictationError {
-  const msg = error?.message?.toLowerCase() || "";
-  const dataMsg = (data?.error || data?.message || "").toLowerCase();
+  // Defensive: error/data fields may occasionally be objects rather than
+  // strings (e.g. nested error shapes). Coerce to string before lowercasing
+  // so we never throw inside the catch path.
+  const msg = String(error?.message ?? "").toLowerCase();
+  const dataMsg = String(data?.error ?? data?.message ?? "").toLowerCase();
   const combined = msg + " " + dataMsg;
 
   // Quota / limit exceeded
