@@ -52,6 +52,10 @@ let currentLanguage = "sl";
 let currentShortcut = "F2";
 /** Active Soniox live-mode session (null when not recording in live mode) */
 let activeSonioxSession: SonioxSession | null = null;
+/** Accumulated final-token text waiting to be pasted (live paste debounce) */
+let livePasteBuffer = "";
+/** Timer ID for the live-paste debounce flush */
+let livePasteTimer: ReturnType<typeof setTimeout> | null = null;
 
 // ─── Load saved settings from localStorage ──────────────────────────────────
 function loadSettings() {
@@ -513,6 +517,9 @@ async function handleLogin() {
 }
 
 async function handleLogout() {
+  // Clean up live-paste debounce state
+  if (livePasteTimer !== null) { clearTimeout(livePasteTimer); livePasteTimer = null; }
+  livePasteBuffer = "";
   // Clean up any active recording sessions before signing out
   if (activeSonioxSession) {
     try { await activeSonioxSession.stop(); } catch (_) { /* */ }
@@ -545,17 +552,34 @@ async function handleShortcutPress() {
       activeSonioxSession = null;
       const { text, durationSeconds: _dur } = await session.stop();
 
+      // Flush any final-delta tokens that arrived during finalize (still in
+      // the debounce buffer). Cancel the pending timer and paste immediately.
+      if (livePasteTimer !== null) {
+        clearTimeout(livePasteTimer);
+        livePasteTimer = null;
+      }
+      if (livePasteBuffer.trim()) {
+        const toFlush = livePasteBuffer;
+        livePasteBuffer = "";
+        try { await invoke("copy_and_paste", { text: toFlush }); } catch (_) { /* */ }
+      } else {
+        livePasteBuffer = "";
+      }
+
       if (!text.trim()) {
         setStatus("error", t().statusError);
         showLastTranscript(""); // reset to plain label
         setTimeout(() => { if (!activeSonioxSession) setStatus("ready"); }, 4000);
       } else {
-        await invoke("copy_and_paste", { text });
+        // Text was already pasted incrementally — just update UI.
         setStatus("done", t().statusDone);
         showLastTranscript(text); // final text + restore label
         setTimeout(() => { if (!activeSonioxSession) setStatus("ready"); }, 4000);
       }
     } catch (err: any) {
+      // Clean up live-paste state on error
+      if (livePasteTimer !== null) { clearTimeout(livePasteTimer); livePasteTimer = null; }
+      livePasteBuffer = "";
       activeSonioxSession = null;
       console.error("Live dictation stop error:", err);
       await bringWindowToFront();
@@ -597,10 +621,35 @@ async function handleShortcutPress() {
   if (currentMode === "live") {
     // ── Live mode: Soniox WebSocket streaming ──
     try {
+      // Reset live-paste state before starting a new session
+      if (livePasteTimer !== null) { clearTimeout(livePasteTimer); livePasteTimer = null; }
+      livePasteBuffer = "";
+
       const session = new SonioxSession({
         onTranscriptUpdate: (text) => {
           // Update the live transcript panel in real time
           updateLiveTranscript(text);
+        },
+        onFinalDelta: (delta) => {
+          // Accumulate finalized text; debounce 400 ms before pasting.
+          // This avoids clipboard/keyboard race conditions from rapid-fire pastes.
+          livePasteBuffer += delta;
+          if (livePasteTimer !== null) {
+            clearTimeout(livePasteTimer);
+            livePasteTimer = null;
+          }
+          livePasteTimer = setTimeout(async () => {
+            livePasteTimer = null;
+            if (livePasteBuffer) {
+              const toSend = livePasteBuffer;
+              livePasteBuffer = "";
+              try {
+                await invoke("copy_and_paste", { text: toSend });
+              } catch (e) {
+                console.warn("[LivePaste] paste failed:", e);
+              }
+            }
+          }, 400);
         },
       });
       await session.start();
