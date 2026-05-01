@@ -24,12 +24,15 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' data:; connect-src 'self' https://*.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com data:; font-src https://fonts.gstatic.com; media-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' data:"
+      "csp": "default-src 'self' data:; connect-src 'self' https://*.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com wss://stt-rt.soniox.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com data:; font-src https://fonts.gstatic.com; media-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' data:"
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi"],
+    "targets": [
+      "nsis",
+      "msi"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -41,7 +44,10 @@
       "nsis": {
         "installMode": "both",
         "displayLanguageSelector": false,
-        "languages": ["English", "Slovenian"],
+        "languages": [
+          "English",
+          "Slovenian"
+        ],
         "installerIcon": "icons/icon.ico",
         "headerImage": null,
         "sidebarImage": null,
@@ -55,7 +61,9 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["perfecttext"]
+        "schemes": [
+          "perfecttext"
+        ]
       }
     }
   }

@@ -690,15 +690,9 @@ function showErrorPanel(err?: DictationError) {
       errorPanelDivider.style.display = "none";
       break;
     case "generic":
-    default: {
-      // Show the technical error message as a detail line so the user
-      // can identify exactly what failed (WebSocket, Edge Function, etc.)
-      const detail = err?.message;
-      if (detail && detail.length < 200) {
-        errorPanelSubtitle.textContent = tr.errorPanelSubtitle + " [" + detail + "]";
-      }
+    default:
+      // Unknown error — show both steps with default subtitle.
       break;
-    }
   }
 
   errorPanel.style.display = "block";
