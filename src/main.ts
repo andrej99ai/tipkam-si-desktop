@@ -619,12 +619,21 @@ async function handleShortcutPress() {
       activeSonioxSession = null;
       console.error("Live recording start error:", err);
       await bringWindowToFront();
-      if (err instanceof DictationError && (err.type === "quota" || err.type === "auth")) {
-        setStatus("error");
+      setStatus("error");
+      if (err instanceof DictationError) {
+        // Quota, auth, or generic — error panel handles all DictationError types
         showErrorPanel(err);
-      } else {
+      } else if (
+        err?.name === "NotAllowedError" ||
+        err?.name === "PermissionDeniedError" ||
+        err?.name === "NotFoundError"
+      ) {
+        // Actual microphone permission/hardware issue
         setStatus("error", t().micError);
         setTimeout(() => setStatus("ready"), 5000);
+      } else {
+        // Unknown error (AudioContext, network, etc.) — show generic error panel
+        showErrorPanel(new DictationError(err?.message || "Live mode error", "generic"));
       }
     }
   } else {

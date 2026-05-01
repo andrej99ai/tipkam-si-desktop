@@ -94,7 +94,26 @@ export class SonioxSession {
    * Throws DictationError (quota / auth / generic) on failure.
    */
   async start(): Promise<void> {
-    // 1. Fetch ephemeral Soniox key (checks user quota too)
+    // 1. Open microphone FIRST — before any async network calls.
+    //    Chromium/WebView2 requires the getUserMedia call to happen within
+    //    the "user activation" window (the brief period after a key/click event).
+    //    If we await a network request first, that window expires and WebView2
+    //    rejects the getUserMedia call even when permission was already granted.
+    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    try {
+      await this.setupAfterMic();
+    } catch (err) {
+      // If anything fails after we have the mic, release it cleanly.
+      try { this.stream.getTracks().forEach((t) => t.stop()); } catch (_) { /* */ }
+      this.stream = null;
+      throw err;
+    }
+  }
+
+  /** All setup steps that follow after the microphone stream is acquired. */
+  private async setupAfterMic(): Promise<void> {
+    // 2. Fetch ephemeral Soniox key (also validates user quota)
     const { data, error } = await supabase.functions.invoke("soniox-temp-key", {
       body: {},
     });
@@ -103,9 +122,6 @@ export class SonioxSession {
       throw classifySonioxKeyError(error, data);
     }
     const tempKey = data.api_key as string;
-
-    // 2. Open microphone
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
     // 3. AudioContext — request 16 kHz (Soniox requirement)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,7 +163,7 @@ export class SonioxSession {
 
     // 7. Start streaming PCM via ScriptProcessorNode
     //    Buffer size 2048 = ~128 ms @16 kHz — good latency vs. overhead balance.
-    this.source = this.audioContext.createMediaStreamSource(this.stream);
+    this.source = this.audioContext.createMediaStreamSource(this.stream!);
     this.processor = this.audioContext.createScriptProcessor(2048, 1, 1);
 
     this.processor.onaudioprocess = (e) => {
@@ -307,9 +323,9 @@ export class SonioxSession {
    */
   private postProcess(text: string): string {
     return text
-      .replace(/,\s+(in)\b/gi, " $1")   // ,in → in
-      .replace(/\s{2,}/g, " ")           // multiple spaces → one
-      .replace(/\s+([.,!;:?])/g, "$1")  // space before punctuation → none
+      .replace(/,\s+(in)\b/gi, " $1")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([.,!;:?])/g, "$1")
       .trim();
   }
 }
