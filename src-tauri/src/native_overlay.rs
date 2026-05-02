@@ -25,6 +25,7 @@ fn parse_color(color: &str) -> u32 {
         "#dc2626" | "red" => rgb_to_colorref(220, 38, 38),
         "#f59e0b" | "#d97706" | "yellow" => rgb_to_colorref(217, 119, 6),
         "#16a34a" | "green" => rgb_to_colorref(22, 163, 74),
+        "#0ea5e9" | "blue" => rgb_to_colorref(14, 165, 233),
         _ => rgb_to_colorref(220, 38, 38),
     }
 }
@@ -143,8 +144,4 @@ pub fn hide_overlay() {
     let hwnd = OVERLAY_HWND.load(Ordering::Relaxed);
     if hwnd.is_null() {
         return;
-    }
-    unsafe {
-        ShowWindow(hwnd, SW_HIDE);
-    }
-}
+ 
