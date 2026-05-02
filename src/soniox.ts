@@ -24,8 +24,6 @@ import { DictationError } from "./dictation";
 export interface SonioxCallbacks {
   /** Called with the full current transcript text (final + partial preview) */
   onTranscriptUpdate: (text: string) => void;
-  /** Called with each new chunk of finalized text as it arrives (for live paste) */
-  onFinalDelta?: (delta: string) => void;
 }
 
 // ─── Error classification ────────────────────────────────────────────────────
@@ -282,10 +280,7 @@ export class SonioxSession {
         }
       }
 
-      if (newFinal) {
-        this.finalText += newFinal;
-        this.callbacks.onFinalDelta?.(newFinal);
-      }
+      if (newFinal) this.finalText += newFinal;
       this.nonFinalPreview = newNonFinal;
 
       const display = (this.finalText + this.nonFinalPreview).trim();
