@@ -354,7 +354,7 @@ function setStatus(
       showOverlay("#dc2626");
       break;
     case "processing":
-      statusText.textContent = tr.statusProcessing;
+      statusText.textContent = msg || tr.statusProcessing;
       setTrayColor("yellow");
       setTrayTooltip(tr.trayProcessing);
       showOverlay("#d97706");
@@ -596,6 +596,10 @@ async function handleShortcutPress() {
   if (currentMode === "live") {
     // ── Live mode: Soniox WebSocket streaming ──
     try {
+      // Show "connecting" state immediately — gives instant visual feedback
+      // while mic + WebSocket setup runs in the background (~0.5–1 s).
+      setStatus("processing", t().statusConnecting);
+
       const session = new SonioxSession({
         onTranscriptUpdate: (text) => {
           // Update the live transcript panel in real time
