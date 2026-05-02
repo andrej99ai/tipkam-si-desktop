@@ -92,7 +92,7 @@ fn register_class() {
 
 pub fn create_overlay(screen_width: f64) {
     register_class();
-    let overlay_w: i32 = 200;
+    let overlay_w: i32 = 50;
     let overlay_h: i32 = 8;
     let pos_x = ((screen_width / 2.0) - (overlay_w as f64 / 2.0)) as i32;
     unsafe {
@@ -144,4 +144,4 @@ pub fn hide_overlay() {
     let hwnd = OVERLAY_HWND.load(Ordering::Relaxed);
     if hwnd.is_null() {
         return;
- 
+  
