@@ -39,14 +39,10 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Perfect Text ${{ github.ref_name }}'
-          releaseBody: |
-            Nova različica Perfect Text.
-
-            Prenesite datoteko `Perfect.Text_x.x.x_x64-setup.exe` spodaj.
+          releaseBody: 'Nova različica Perfect Text. Prenesite datoteko Perfect.Text_x.x.x_x64-setup.exe spodaj.'
           releaseDraft: false
           prerelease: false
-          updaterJsonPath: latest.json
-          updaterJsonKeepUniversal: false
+          includeUpdaterJson: true
 
       - name: Commit latest.json back to main
         run: |

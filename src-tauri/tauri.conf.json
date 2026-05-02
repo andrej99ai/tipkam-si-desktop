@@ -69,4 +69,11 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IERFQzI1Qjg5NEZEOURFMDMKUldRRDN0bFBpVnZDM2tXVGlDTENVVFBiMDZkV2YvS0FseUdvL25IZXV1UHpqTFUvdk52THhMWW4K",
       "endpoints": [
-        "https://raw.githubusercontent.com/andr
+        "https://raw.githubusercontent.com/andrej99ai/tipkam-si-desktop/main/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}
