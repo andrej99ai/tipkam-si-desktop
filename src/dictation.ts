@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 
-export type DictationMode = "fast" | "accurate" | "live";
+export type DictationMode = "fast" | "accurate";
 
 export interface DictationResult {
   raw_transcript: string;

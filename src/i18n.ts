@@ -28,9 +28,6 @@ export interface Translations {
   modeAccurateTooltip: string;
   modeFast: string;
   modeFastTooltip: string;
-  modeLive: string;
-  modeLiveTooltip: string;
-  liveTranscriptLabel: string;
 
   // Status
   statusReady: (key: string) => string;
@@ -106,9 +103,6 @@ const sl: Translations = {
   modeAccurateTooltip: "Natančno oblikovano besedilo (Gemini Pro)",
   modeFast: "Hitro",
   modeFastTooltip: "Hiter surov prepis govora (Gemini Flash)",
-  modeLive: "Super hitro",
-  modeLiveTooltip: "Prepis govora v živo (Soniox Nova)",
-  liveTranscriptLabel: "V ŽIVO:",
 
   statusReady: (key) => `Pripravljen — pritisni ${key} za narekovanje`,
   statusRecording: (key) => `Snemam... Pritisni ${key} za ustavitev`,
@@ -175,9 +169,6 @@ const en: Translations = {
   modeAccurateTooltip: "Accurately formatted text (Gemini Pro)",
   modeFast: "Fast",
   modeFastTooltip: "Quick raw transcription (Gemini Flash)",
-  modeLive: "Super fast",
-  modeLiveTooltip: "Live real-time transcription (Soniox Nova)",
-  liveTranscriptLabel: "LIVE:",
 
   statusReady: (key) => `Ready — press ${key} to dictate`,
   statusRecording: (key) => `Recording... Press ${key} to stop`,
@@ -244,9 +235,6 @@ const it: Translations = {
   modeAccurateTooltip: "Testo formattato con precisione (Gemini Pro)",
   modeFast: "Veloce",
   modeFastTooltip: "Trascrizione rapida grezza (Gemini Flash)",
-  modeLive: "Super veloce",
-  modeLiveTooltip: "Trascrizione in tempo reale (Soniox Nova)",
-  liveTranscriptLabel: "IN DIRETTA:",
 
   statusReady: (key) => `Pronto — premi ${key} per dettare`,
   statusRecording: (key) => `Registrazione... Premi ${key} per fermare`,

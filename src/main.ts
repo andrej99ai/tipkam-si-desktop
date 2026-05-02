@@ -1,7 +1,6 @@
 import { supabase } from "./supabase";
 import { startRecording, stopRecording, isRecording } from "./recorder";
 import { processDictation, DictationMode, DictationError } from "./dictation";
-import { SonioxSession } from "./soniox";
 import { LANGUAGES, isSlovenian } from "./languages";
 import { t, setUILanguage, getUILanguage, UILanguage, UI_LANGUAGES } from "./i18n";
 import { listen } from "@tauri-apps/api/event";
@@ -26,7 +25,6 @@ const lastTranscript = document.getElementById("last-transcript") as HTMLDivElem
 const lastTranscriptText = document.getElementById("last-transcript-text") as HTMLParagraphElement;
 const modeFastBtn = document.getElementById("mode-fast-btn") as HTMLButtonElement;
 const modeAccurateBtn = document.getElementById("mode-accurate-btn") as HTMLButtonElement;
-const modeLiveBtn = document.getElementById("mode-live-btn") as HTMLButtonElement;
 const modeToggle = document.getElementById("mode-toggle") as HTMLDivElement;
 const languageSelect = document.getElementById("language-select") as HTMLSelectElement;
 const shortcutSelect = document.getElementById("shortcut-select") as HTMLSelectElement;
@@ -50,8 +48,7 @@ let micPermissionGranted = false;
 let currentMode: DictationMode = "accurate";
 let currentLanguage = "sl";
 let currentShortcut = "F2";
-/** Active Soniox live-mode session (null when not recording in live mode) */
-let activeSonioxSession: SonioxSession | null = null;
+
 // ─── Load saved settings from localStorage ──────────────────────────────────
 function loadSettings() {
   try {
@@ -172,8 +169,7 @@ function handleLanguageChange() {
     // from Slovenian and back — currentMode may have changed to "fast")
     setMode(currentMode);
   } else {
-    // Hide mode toggle for other languages — always use "fast".
-    // Also reset "live" to "fast" so it doesn't persist when returning to SL.
+    // Hide mode toggle for other languages — always use "fast"
     modeToggle.style.display = "none";
     setMode("fast"); // also updates the (now hidden) button states for consistency
   }
@@ -183,15 +179,15 @@ function handleLanguageChange() {
 // ─── Mode toggle ────────────────────────────────────────────────────────────
 function setMode(mode: DictationMode) {
   currentMode = mode;
-  // Clear all active states, then apply to the matching button
-  modeFastBtn?.classList.remove("active");
-  modeAccurateBtn?.classList.remove("active");
-  modeLiveBtn?.classList.remove("active");
-
-  if (mode === "fast") modeFastBtn?.classList.add("active");
-  else if (mode === "accurate") modeAccurateBtn?.classList.add("active");
-  else if (mode === "live") modeLiveBtn?.classList.add("active");
-
+  if (modeFastBtn && modeAccurateBtn) {
+    if (mode === "fast") {
+      modeFastBtn.classList.add("active");
+      modeAccurateBtn.classList.remove("active");
+    } else {
+      modeFastBtn.classList.remove("active");
+      modeAccurateBtn.classList.add("active");
+    }
+  }
   saveSettings();
 }
 
@@ -327,13 +323,6 @@ function setStatus(
   // Cancel any tail-window timer from a previous status — otherwise an
   // in-flight hideOverlay could fire during a new recording.
   clearStatusOverlayTimer();
-
-  // Lock mode buttons during active recording or processing so the user
-  // cannot switch modes mid-cycle (audio wouldn't match the selected model).
-  const lock = state === "recording" || state === "processing";
-  if (modeFastBtn) modeFastBtn.disabled = lock;
-  if (modeAccurateBtn) modeAccurateBtn.disabled = lock;
-  if (modeLiveBtn) modeLiveBtn.disabled = lock;
 
   statusDot.className = "status-dot " + state;
   const key = currentShortcut;
@@ -512,17 +501,6 @@ async function handleLogin() {
 }
 
 async function handleLogout() {
-  // Clean up any active recording sessions before signing out
-  if (activeSonioxSession) {
-    try { await activeSonioxSession.stop(); } catch (_) { /* */ }
-    activeSonioxSession = null;
-  }
-  if (isRecording()) {
-    try { await stopRecording(); } catch (_) { /* */ }
-  }
-  isProcessing = false;
-  clearStatusOverlayTimer();
-  hideOverlay();
   await supabase.auth.signOut();
   showLogin();
 }
@@ -535,39 +513,8 @@ async function handleShortcutPress() {
   if (!isLoggedIn) return;
   if (isProcessing) return;
 
-  // ── Case 1: Soniox live session active → stop it ───────────────────────
-  if (activeSonioxSession) {
-    isProcessing = true;
-    // Keep "recording" visual until finalize completes (<1 s) — then jump to done.
-    try {
-      const session = activeSonioxSession;
-      activeSonioxSession = null;
-      const { text, durationSeconds: _dur } = await session.stop();
-
-      if (!text.trim()) {
-        setStatus("error", t().statusError);
-        showLastTranscript(""); // reset to plain label
-        setTimeout(() => { if (!activeSonioxSession) setStatus("ready"); }, 4000);
-      } else {
-        await invoke("copy_and_paste", { text });
-        setStatus("done", t().statusDone);
-        showLastTranscript(text); // final text + restore label
-        setTimeout(() => { if (!activeSonioxSession) setStatus("ready"); }, 4000);
-      }
-    } catch (err: any) {
-      activeSonioxSession = null;
-      console.error("Live dictation stop error:", err);
-      await bringWindowToFront();
-      setStatus("error");
-      showErrorPanel(err instanceof DictationError ? err : undefined);
-    } finally {
-      isProcessing = false;
-    }
-    return;
-  }
-
-  // ── Case 2: MediaRecorder active → stop & process ──────────────────────
   if (isRecording()) {
+    // ── Stop recording & process ──
     isProcessing = true;
     setStatus("processing");
     try {
@@ -587,56 +534,9 @@ async function handleShortcutPress() {
     } finally {
       isProcessing = false;
     }
-    return;
-  }
-
-  // ── Case 3: Nothing active → start recording ───────────────────────────
-  if (!micPermissionGranted) await bringWindowToFront();
-
-  if (currentMode === "live") {
-    // ── Live mode: Soniox WebSocket streaming ──
-    try {
-      const session = new SonioxSession({
-        onTranscriptUpdate: (text) => {
-          // Update the live transcript panel in real time
-          updateLiveTranscript(text);
-        },
-      });
-      await session.start();
-      activeSonioxSession = session;
-      micPermissionGranted = true;
-
-      // Show live transcript panel with "live" label
-      if (lastTranscript && lastTranscriptText) {
-        lastTranscript.style.display = "block";
-        const lbl = lastTranscript.querySelector("label");
-        if (lbl) lbl.textContent = t().liveTranscriptLabel;
-        lastTranscriptText.textContent = "...";
-      }
-      setStatus("recording");
-    } catch (err: any) {
-      activeSonioxSession = null;
-      console.error("Live recording start error:", err);
-      await bringWindowToFront();
-      setStatus("error");
-      if (err instanceof DictationError) {
-        // Quota, auth, or generic — error panel handles all DictationError types
-        showErrorPanel(err);
-      } else if (
-        err?.name === "NotAllowedError" ||
-        err?.name === "PermissionDeniedError" ||
-        err?.name === "NotFoundError"
-      ) {
-        // Actual microphone permission/hardware issue
-        setStatus("error", t().micError);
-        setTimeout(() => setStatus("ready"), 5000);
-      } else {
-        // Unknown error (AudioContext, network, etc.) — show generic error panel
-        showErrorPanel(new DictationError(err?.message || "Live mode error", "generic"));
-      }
-    }
   } else {
-    // ── Standard mode: MediaRecorder (accurate / fast) ──
+    // ── Start recording ──
+    if (!micPermissionGranted) await bringWindowToFront();
     try {
       await startRecording();
       micPermissionGranted = true;
@@ -647,13 +547,6 @@ async function handleShortcutPress() {
       setStatus("error", t().micError);
       setTimeout(() => setStatus("ready"), 5000);
     }
-  }
-}
-
-/** Update the transcript panel with live (in-progress) text */
-function updateLiveTranscript(text: string) {
-  if (lastTranscript && lastTranscriptText) {
-    lastTranscriptText.textContent = text || "...";
   }
 }
 
@@ -719,15 +612,6 @@ btnErrorLogout.addEventListener("click", async () => {
 // ─── Last transcript display ────────────────────────────────────────────────
 function showLastTranscript(text: string) {
   if (lastTranscript && lastTranscriptText) {
-    // Restore label to the standard "last transcript" label (in case it
-    // was showing the live "V ŽIVO:" label from a previous live session).
-    const lbl = lastTranscript.querySelector("label");
-    if (lbl) lbl.textContent = t().lastTranscriptLabel;
-
-    if (!text.trim()) {
-      lastTranscript.style.display = "none";
-      return;
-    }
     lastTranscript.style.display = "block";
     lastTranscriptText.textContent =
       text.length > 300 ? text.substring(0, 300) + "..." : text;
@@ -746,7 +630,6 @@ emailInput.addEventListener("keydown", (e) => {
 logoutBtn.addEventListener("click", handleLogout);
 if (modeFastBtn) modeFastBtn.addEventListener("click", () => setMode("fast"));
 if (modeAccurateBtn) modeAccurateBtn.addEventListener("click", () => setMode("accurate"));
-if (modeLiveBtn) modeLiveBtn.addEventListener("click", () => setMode("live"));
 if (languageSelect) languageSelect.addEventListener("change", handleLanguageChange);
 if (shortcutSelect) shortcutSelect.addEventListener("change", handleShortcutChange);
 
