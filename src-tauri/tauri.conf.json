@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' data:; connect-src 'self' https://*.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com wss://stt-rt.soniox.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com data:; font-src https://fonts.gstatic.com; media-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' data:"
+      "csp": "default-src 'self' data:; connect-src 'self' https://*.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com wss://stt-rt.soniox.com https://raw.githubusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com data:; font-src https://fonts.gstatic.com; media-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' data:"
     }
   },
   "bundle": {
@@ -64,6 +64,15 @@
         "schemes": [
           "perfecttext"
         ]
+      }
+    },
+    "updater": {
+      "pubkey": "REPLACE_WITH_YOUR_PUBLIC_KEY",
+      "endpoints": [
+        "https://raw.githubusercontent.com/andrej99ai/tipkam-si-desktop/main/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

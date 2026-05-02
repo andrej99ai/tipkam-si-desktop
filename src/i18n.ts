@@ -82,6 +82,10 @@ export interface Translations {
   errorStepDesktopDesc: string;
   errorBtnLogout: string;
   errorBtnDismiss: string;
+
+  // Update banner
+  updateAvailable: string;
+  updateInstall: string;
 }
 
 const sl: Translations = {
@@ -152,6 +156,9 @@ const sl: Translations = {
   errorStepDesktopDesc: "Odjavi se in se ponovno prijavi.",
   errorBtnLogout: "Odjavi me",
   errorBtnDismiss: "Zapri",
+
+  updateAvailable: "Na voljo je nova različica Perfect Text!",
+  updateInstall: "Namesti in znova zaženi",
 };
 
 const en: Translations = {
@@ -222,6 +229,9 @@ const en: Translations = {
   errorStepDesktopDesc: "Sign out and sign back in.",
   errorBtnLogout: "Sign me out",
   errorBtnDismiss: "Close",
+
+  updateAvailable: "A new version of Perfect Text is available!",
+  updateInstall: "Install and restart",
 };
 
 const it: Translations = {
@@ -292,6 +302,9 @@ const it: Translations = {
   errorStepDesktopDesc: "Esci e accedi di nuovo.",
   errorBtnLogout: "Esci",
   errorBtnDismiss: "Chiudi",
+
+  updateAvailable: "È disponibile una nuova versione di Perfect Text!",
+  updateInstall: "Installa e riavvia",
 };
 
 const translations: Record<UILanguage, Translations> = { sl, en, it };

@@ -9,6 +9,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-shell";
 import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 
 // ─── DOM Elements ───────────────────────────────────────────────────────────
 const loginScreen = document.getElementById("login-screen") as HTMLDivElement;
@@ -28,6 +30,10 @@ const modeFastBtn = document.getElementById("mode-fast-btn") as HTMLButtonElemen
 const modeAccurateBtn = document.getElementById("mode-accurate-btn") as HTMLButtonElement;
 const modeLiveBtn = document.getElementById("mode-live-btn") as HTMLButtonElement;
 const modeToggle = document.getElementById("mode-toggle") as HTMLDivElement;
+const updateBanner = document.getElementById("update-banner") as HTMLDivElement;
+const updateBannerText = document.getElementById("update-banner-text") as HTMLSpanElement;
+const updateInstallBtn = document.getElementById("update-install-btn") as HTMLButtonElement;
+const updateDismissBtn = document.getElementById("update-dismiss-btn") as HTMLButtonElement;
 const languageSelect = document.getElementById("language-select") as HTMLSelectElement;
 const shortcutSelect = document.getElementById("shortcut-select") as HTMLSelectElement;
 const shortcutDisplay = document.getElementById("shortcut-key") as HTMLElement;
@@ -791,6 +797,46 @@ listen("deep-link-received", (event) => {
   }
 });
 
+// ─── Auto-update ────────────────────────────────────────────────────────────
+let pendingUpdate: Awaited<ReturnType<typeof check>> | null = null;
+
+async function checkForUpdates() {
+  try {
+    const update = await check();
+    if (update?.available) {
+      pendingUpdate = update;
+      if (updateBannerText) updateBannerText.textContent = t().updateAvailable;
+      if (updateInstallBtn) updateInstallBtn.textContent = t().updateInstall;
+      if (updateBanner) updateBanner.style.display = "flex";
+    }
+  } catch (e) {
+    // Update check failed silently — user is not bothered
+    console.log("Update check skipped:", e);
+  }
+}
+
+if (updateInstallBtn) {
+  updateInstallBtn.addEventListener("click", async () => {
+    if (!pendingUpdate) return;
+    updateInstallBtn.textContent = "...";
+    updateInstallBtn.disabled = true;
+    try {
+      await pendingUpdate.downloadAndInstall();
+      await relaunch();
+    } catch (e) {
+      console.error("Update install failed:", e);
+      updateInstallBtn.textContent = t().updateInstall;
+      updateInstallBtn.disabled = false;
+    }
+  });
+}
+
+if (updateDismissBtn) {
+  updateDismissBtn.addEventListener("click", () => {
+    if (updateBanner) updateBanner.style.display = "none";
+  });
+}
+
 // ─── Init ───────────────────────────────────────────────────────────────────
 async function init() {
   loadSettings();
@@ -837,7 +883,10 @@ async function init() {
   } = await supabase.auth.getSession();
   if (session?.user) {
     showMain(session.user.email ?? "");
+    checkForUpdates();
   } else {
     showLogin();
   }
 }
+
+init();

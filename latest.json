@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "notes": "Začetna različica",
+  "pub_date": "2025-01-01T00:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "url": "https://github.com/andrej99ai/tipkam-si-desktop/releases/download/v0.1.0/Perfect.Text_0.1.0_x64-setup.exe",
+      "signature": ""
+    }
+  }
+}

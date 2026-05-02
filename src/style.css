@@ -732,3 +732,59 @@ body {
     transform: translateY(0);
   }
 }
+
+/* ─── Update Banner ──────────────────────────────────────────────────────── */
+
+.update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #0ea5e9;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.update-banner span {
+  flex: 1;
+}
+
+.btn-update-install {
+  padding: 5px 14px;
+  background: #fff;
+  color: #0ea5e9;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn-update-install:hover {
+  background: #e0f2fe;
+}
+
+.btn-update-dismiss {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.btn-update-dismiss:hover {
+  opacity: 1;
+}
