@@ -344,7 +344,7 @@ function setStatus(
       statusText.textContent = tr.statusReady(key);
       setTrayColor("green");
       setTrayTooltip(tr.trayReady(key));
-      hideOverlay();
+      showOverlay("#0ea5e9");
       errorPanel.style.display = "none";
       break;
     case "recording":
@@ -841,5 +841,3 @@ async function init() {
     showLogin();
   }
 }
-
-init();
