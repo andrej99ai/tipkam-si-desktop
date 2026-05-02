@@ -144,4 +144,8 @@ pub fn hide_overlay() {
     let hwnd = OVERLAY_HWND.load(Ordering::Relaxed);
     if hwnd.is_null() {
         return;
-  
+    }
+    unsafe {
+        ShowWindow(hwnd, SW_HIDE);
+    }
+}
