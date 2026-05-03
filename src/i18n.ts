@@ -86,6 +86,12 @@ export interface Translations {
   // Update banner
   updateAvailable: string;
   updateInstall: string;
+
+  // Status legend
+  legendReady: string;
+  legendConnecting: string;
+  legendRecording: string;
+  legendDone: string;
 }
 
 const sl: Translations = {
@@ -159,6 +165,11 @@ const sl: Translations = {
 
   updateAvailable: "Na voljo je nova različica Perfect Text!",
   updateInstall: "Namesti in znova zaženi",
+
+  legendReady: "Pripravljen",
+  legendConnecting: "Vzpostavljam",
+  legendRecording: "Snemam",
+  legendDone: "Prilepljeno",
 };
 
 const en: Translations = {
@@ -232,6 +243,11 @@ const en: Translations = {
 
   updateAvailable: "A new version of Perfect Text is available!",
   updateInstall: "Install and restart",
+
+  legendReady: "Ready",
+  legendConnecting: "Connecting",
+  legendRecording: "Recording",
+  legendDone: "Pasted",
 };
 
 const it: Translations = {
@@ -305,6 +321,11 @@ const it: Translations = {
 
   updateAvailable: "È disponibile una nuova versione di Perfect Text!",
   updateInstall: "Installa e riavvia",
+
+  legendReady: "Pronto",
+  legendConnecting: "Connessione",
+  legendRecording: "Registrazione",
+  legendDone: "Incollato",
 };
 
 const translations: Record<UILanguage, Translations> = { sl, en, it };
