@@ -35,7 +35,7 @@ jobs:
           $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
           $conf.version = $VERSION
           $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json -Encoding UTF8
-          Write-Host "tauri.conf.json version updated to $VERSION"
+          Write-Host "Version updated to $VERSION"
 
       - name: Install frontend dependencies
         run: npm install
@@ -60,27 +60,47 @@ jobs:
         run: |
           $TAG = "${{ github.ref_name }}"
           $VERSION = $TAG.TrimStart('v')
-
-          # Poisci NSIS .sig datoteko
-          $sigFile = Get-ChildItem -Recurse -Path "src-tauri/target/release/bundle/nsis" -Filter "*.sig" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $sigFile) {
-            $sigFile = Get-ChildItem -Recurse -Path "src-tauri/target/release/bundle" -Filter "*.sig" | Select-Object -First 1
+          $REPO = "andrej99ai/tipkam-si-desktop"
+          $headers = @{
+            Authorization = "Bearer $env:GITHUB_TOKEN"
+            Accept        = "application/vnd.github.v3+json"
           }
-          Write-Host "Sig datoteka: $($sigFile.FullName)"
-          $signature = (Get-Content $sigFile.FullName -Raw).Trim()
 
-          # Poisci exe ime
-          $exeFile = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*setup.exe" | Select-Object -First 1
-          $exeName = $exeFile.Name
-          Write-Host "Exe: $exeName"
+          # Pocakaj da GitHub indeksira assete
+          Start-Sleep -Seconds 15
+
+          # Pridobi release po tagu
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$REPO/releases/tags/$TAG" -Headers $headers
+          Write-Host "Asseti v releaseu:"
+          $release.assets | ForEach-Object { Write-Host "  $($_.name)" }
+
+          # Poišci NSIS .sig (ne MSI)
+          $sigAsset = $release.assets | Where-Object {
+            $_.name -like "*.sig" -and $_.name -notlike "*msi*" -and $_.name -notlike "*MSI*"
+          } | Select-Object -First 1
+          if (-not $sigAsset) {
+            $sigAsset = $release.assets | Where-Object { $_.name -like "*.sig" } | Select-Object -First 1
+          }
+          Write-Host "Sig asset: $($sigAsset.name)"
+
+          # Prenesi signaturo
+          $dlHeaders = @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = "application/octet-stream" }
+          $signature = (Invoke-RestMethod -Uri $sigAsset.url -Headers $dlHeaders)
+          if ($signature -isnot [string]) { $signature = [System.Text.Encoding]::UTF8.GetString($signature) }
+          $signature = $signature.Trim()
+          Write-Host "Signatura pridobljena (prvih 40 znakov): $($signature.Substring(0, [Math]::Min(40,$signature.Length)))"
+
+          # Poišci .exe asset
+          $exeAsset = $release.assets | Where-Object { $_.name -like "*setup.exe" } | Select-Object -First 1
+          Write-Host "Exe asset: $($exeAsset.name)"
 
           $latestJson = [ordered]@{
-            version = $VERSION
-            notes = "Nova razlicica Perfect Text."
+            version  = $VERSION
+            notes    = "Nova razlicica Perfect Text."
             pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
             platforms = [ordered]@{
               "windows-x86_64" = [ordered]@{
-                url = "https://github.com/andrej99ai/tipkam-si-desktop/releases/download/$TAG/$exeName"
+                url       = $exeAsset.browser_download_url
                 signature = $signature
               }
             }
@@ -99,7 +119,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             git commit -m "chore: update latest.json for $TAG"
             git push origin main
-            Write-Host "latest.json posodobljen!"
+            Write-Host "latest.json uspesno posodobljen!"
           } else {
             Write-Host "Ni sprememb v latest.json"
           }
