@@ -27,6 +27,16 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
+      - name: Set app version from tag
+        shell: pwsh
+        run: |
+          $VERSION = "${{ github.ref_name }}".TrimStart('v')
+          Write-Host "Setting version to: $VERSION"
+          $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $conf.version = $VERSION
+          $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json -Encoding UTF8
+          Write-Host "tauri.conf.json version updated to $VERSION"
+
       - name: Install frontend dependencies
         run: npm install
 
@@ -39,34 +49,57 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Perfect Text ${{ github.ref_name }}'
-          releaseBody: 'Nova različica Perfect Text. Prenesite datoteko Perfect.Text_x.x.x_x64-setup.exe spodaj.'
+          releaseBody: 'Nova razlicica Perfect Text. Prenesite datoteko Perfect.Text_x.x.x_x64-setup.exe spodaj.'
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
 
-      - name: Commit latest.json back to main
+      - name: Generate and commit latest.json
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Shrani vsebino latest.json, ki jo je ustvaril tauri-action
-          $savedJson = Get-Content latest.json -Raw
-          Write-Host "latest.json vsebina: $savedJson"
+          $TAG = "${{ github.ref_name }}"
+          $VERSION = $TAG.TrimStart('v')
+
+          # Poisci NSIS .sig datoteko
+          $sigFile = Get-ChildItem -Recurse -Path "src-tauri/target/release/bundle/nsis" -Filter "*.sig" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $sigFile) {
+            $sigFile = Get-ChildItem -Recurse -Path "src-tauri/target/release/bundle" -Filter "*.sig" | Select-Object -First 1
+          }
+          Write-Host "Sig datoteka: $($sigFile.FullName)"
+          $signature = (Get-Content $sigFile.FullName -Raw).Trim()
+
+          # Poisci exe ime
+          $exeFile = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*setup.exe" | Select-Object -First 1
+          $exeName = $exeFile.Name
+          Write-Host "Exe: $exeName"
+
+          $latestJson = [ordered]@{
+            version = $VERSION
+            notes = "Nova razlicica Perfect Text."
+            pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+            platforms = [ordered]@{
+              "windows-x86_64" = [ordered]@{
+                url = "https://github.com/andrej99ai/tipkam-si-desktop/releases/download/$TAG/$exeName"
+                signature = $signature
+              }
+            }
+          } | ConvertTo-Json -Depth 5
+
+          Write-Host "Generirani latest.json:"
+          Write-Host $latestJson
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git checkout main
-
-          # Obnovi tauri-action verzijo (git checkout main jo je prepisal)
-          Set-Content -Path latest.json -Value $savedJson -NoNewline
-
+          Set-Content -Path latest.json -Value $latestJson -Encoding UTF8
           git add latest.json
           git diff --cached --quiet
           if ($LASTEXITCODE -ne 0) {
-            git commit -m "chore: update latest.json for ${{ github.ref_name }}"
+            git commit -m "chore: update latest.json for $TAG"
             git push origin main
-            Write-Host "latest.json uspesno posodobljen"
+            Write-Host "latest.json posodobljen!"
           } else {
             Write-Host "Ni sprememb v latest.json"
           }
