@@ -45,13 +45,28 @@ jobs:
           includeUpdaterJson: true
 
       - name: Commit latest.json back to main
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Shrani vsebino latest.json, ki jo je ustvaril tauri-action
+          $savedJson = Get-Content latest.json -Raw
+          Write-Host "latest.json vsebina: $savedJson"
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git checkout main
+
+          # Obnovi tauri-action verzijo (git checkout main jo je prepisal)
+          Set-Content -Path latest.json -Value $savedJson -NoNewline
+
           git add latest.json
-          git diff --cached --quiet || git commit -m "chore: update latest.json for ${{ github.ref_name }}"
-          git push origin main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "chore: update latest.json for ${{ github.ref_name }}"
+            git push origin main
+            Write-Host "latest.json uspesno posodobljen"
+          } else {
+            Write-Host "Ni sprememb v latest.json"
+          }
