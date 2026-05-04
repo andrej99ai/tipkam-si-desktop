@@ -36,13 +36,16 @@ jobs:
           $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json -Encoding UTF8
           Write-Host "Version set to $VERSION"
 
-      - name: Write signing key to temp file (fix CRLF)
+      - name: Decode and write signing key
         shell: pwsh
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_B64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          # Normalize line endings — GitHub secrets on Windows can have CRLF
-          $key = $env:TAURI_SIGNING_PRIVATE_KEY -replace "`r`n", "`n" -replace "`r", "`n"
+          # Secret is base64-encoded entire key file — decode it to get raw minisign key
+          $keyBytes = [Convert]::FromBase64String($env:TAURI_SIGNING_PRIVATE_KEY_B64)
+          $key = [System.Text.Encoding]::UTF8.GetString($keyBytes)
+          # Normalize line endings
+          $key = $key -replace "`r`n", "`n" -replace "`r", "`n"
           Write-Host "Key length: $($key.Length)"
           Write-Host "Key first line: $($key.Split("`n")[0])"
           $keyPath = Join-Path $env:RUNNER_TEMP "tauri_signing.key"
