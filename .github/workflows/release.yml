@@ -36,6 +36,20 @@ jobs:
           $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json -Encoding UTF8
           Write-Host "Version set to $VERSION"
 
+      - name: Write signing key to temp file (fix CRLF)
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          # Normalize line endings — GitHub secrets on Windows can have CRLF
+          $key = $env:TAURI_SIGNING_PRIVATE_KEY -replace "`r`n", "`n" -replace "`r", "`n"
+          Write-Host "Key length: $($key.Length)"
+          Write-Host "Key first line: $($key.Split("`n")[0])"
+          $keyPath = Join-Path $env:RUNNER_TEMP "tauri_signing.key"
+          [System.IO.File]::WriteAllText($keyPath, $key, [System.Text.Encoding]::UTF8)
+          echo "TAURI_KEY_PATH=$keyPath" >> $env:GITHUB_ENV
+          Write-Host "Key written to: $keyPath"
+
       - name: Install frontend dependencies
         run: npm install
 
@@ -43,7 +57,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_KEY_PATH }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: ${{ github.ref_name }}
@@ -61,30 +75,28 @@ jobs:
           $TAG = "${{ github.ref_name }}"
           $VERSION = $TAG.TrimStart('v')
 
-          Write-Host "=== Vsebina latest.json po buildu ==="
+          Write-Host "=== latest.json po buildu ==="
           $currentJson = Get-Content "latest.json" -Raw
           Write-Host $currentJson
 
-          # Preveri ce je tauri-action ze generiral veljaven latest.json
           $latestObj = $currentJson | ConvertFrom-Json
           if ($latestObj.version -eq $VERSION -and $latestObj.platforms.'windows-x86_64'.signature) {
-            Write-Host "tauri-action je generiral veljaven latest.json za $VERSION"
+            Write-Host "tauri-action generiral veljaven latest.json za $VERSION"
             $content = $currentJson
           } else {
-            Write-Host "tauri-action NI posodobil latest.json. Iščem .sig datoteke..."
-
-            Write-Host "=== Vsebina bundle mape ==="
+            Write-Host "Iščem .sig datoteke..."
+            Write-Host "=== Bundle mapa ==="
             Get-ChildItem -Recurse "src-tauri/target/release/bundle" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
 
-            Write-Host "=== Vse .sig datoteke ==="
             $sigFiles = Get-ChildItem -Recurse "." -Filter "*.sig" -ErrorAction SilentlyContinue
-            $sigFiles | ForEach-Object { Write-Host "  $($_.FullName)" }
+            Write-Host "=== .sig datoteke: $($sigFiles.Count) ==="
+            $sigFiles | ForEach-Object { Write-Host $_.FullName }
 
-            $sigFile = $sigFiles | Where-Object { $_.Name -notlike "*msi*" -and $_.Name -notlike "*MSI*" } | Select-Object -First 1
+            $sigFile = $sigFiles | Where-Object { $_.Name -notlike "*msi*" } | Select-Object -First 1
             if (-not $sigFile) { $sigFile = $sigFiles | Select-Object -First 1 }
 
             if (-not $sigFile) {
-              Write-Host "NAPAKA: Ni .sig datotek - podpisovanje ni delalo."
+              Write-Host "NAPAKA: Ni .sig datotek. Podpisovanje ni delalo."
               exit 1
             }
 
@@ -121,5 +133,5 @@ jobs:
             git push origin main
             Write-Host "USPEH: latest.json posodobljen!"
           } else {
-            Write-Host "Ni sprememb v latest.json"
+            Write-Host "Ni sprememb"
           }
