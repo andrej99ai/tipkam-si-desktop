@@ -36,23 +36,6 @@ jobs:
           $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json -Encoding UTF8
           Write-Host "Version set to $VERSION"
 
-      - name: Decode and write signing key
-        shell: pwsh
-        env:
-          TAURI_SIGNING_PRIVATE_KEY_B64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        run: |
-          # Secret is base64-encoded entire key file — decode it to get raw minisign key
-          $keyBytes = [Convert]::FromBase64String($env:TAURI_SIGNING_PRIVATE_KEY_B64)
-          $key = [System.Text.Encoding]::UTF8.GetString($keyBytes)
-          # Normalize line endings
-          $key = $key -replace "`r`n", "`n" -replace "`r", "`n"
-          Write-Host "Key length: $($key.Length)"
-          Write-Host "Key first line: $($key.Split("`n")[0])"
-          $keyPath = Join-Path $env:RUNNER_TEMP "tauri_signing.key"
-          [System.IO.File]::WriteAllText($keyPath, $key, [System.Text.Encoding]::UTF8)
-          echo "TAURI_KEY_PATH=$keyPath" >> $env:GITHUB_ENV
-          Write-Host "Key written to: $keyPath"
-
       - name: Install frontend dependencies
         run: npm install
 
@@ -60,7 +43,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_KEY_PATH }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: ${{ github.ref_name }}
