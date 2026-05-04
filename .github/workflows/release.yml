@@ -31,11 +31,10 @@ jobs:
         shell: pwsh
         run: |
           $VERSION = "${{ github.ref_name }}".TrimStart('v')
-          Write-Host "Setting version to: $VERSION"
           $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
           $conf.version = $VERSION
           $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json -Encoding UTF8
-          Write-Host "Version updated to $VERSION"
+          Write-Host "Version set to $VERSION"
 
       - name: Install frontend dependencies
         run: npm install
@@ -45,13 +44,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Perfect Text ${{ github.ref_name }}'
-          releaseBody: 'Nova razlicica Perfect Text. Prenesite datoteko Perfect.Text_x.x.x_x64-setup.exe spodaj.'
+          releaseBody: 'Nova razlicica Perfect Text.'
           releaseDraft: false
           prerelease: false
+          includeUpdaterJson: true
 
       - name: Generate and commit latest.json
         shell: pwsh
@@ -60,66 +60,66 @@ jobs:
         run: |
           $TAG = "${{ github.ref_name }}"
           $VERSION = $TAG.TrimStart('v')
-          $REPO = "andrej99ai/tipkam-si-desktop"
-          $headers = @{
-            Authorization = "Bearer $env:GITHUB_TOKEN"
-            Accept        = "application/vnd.github.v3+json"
-          }
 
-          # Pocakaj da GitHub indeksira assete
-          Start-Sleep -Seconds 15
+          Write-Host "=== Vsebina latest.json po buildu ==="
+          $currentJson = Get-Content "latest.json" -Raw
+          Write-Host $currentJson
 
-          # Pridobi release po tagu
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$REPO/releases/tags/$TAG" -Headers $headers
-          Write-Host "Asseti v releaseu:"
-          $release.assets | ForEach-Object { Write-Host "  $($_.name)" }
+          # Preveri ce je tauri-action ze generiral veljaven latest.json
+          $latestObj = $currentJson | ConvertFrom-Json
+          if ($latestObj.version -eq $VERSION -and $latestObj.platforms.'windows-x86_64'.signature) {
+            Write-Host "tauri-action je generiral veljaven latest.json za $VERSION"
+            $content = $currentJson
+          } else {
+            Write-Host "tauri-action NI posodobil latest.json. Iščem .sig datoteke..."
 
-          # Poišci NSIS .sig (ne MSI)
-          $sigAsset = $release.assets | Where-Object {
-            $_.name -like "*.sig" -and $_.name -notlike "*msi*" -and $_.name -notlike "*MSI*"
-          } | Select-Object -First 1
-          if (-not $sigAsset) {
-            $sigAsset = $release.assets | Where-Object { $_.name -like "*.sig" } | Select-Object -First 1
-          }
-          Write-Host "Sig asset: $($sigAsset.name)"
+            Write-Host "=== Vsebina bundle mape ==="
+            Get-ChildItem -Recurse "src-tauri/target/release/bundle" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
 
-          # Prenesi signaturo
-          $dlHeaders = @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = "application/octet-stream" }
-          $signature = (Invoke-RestMethod -Uri $sigAsset.url -Headers $dlHeaders)
-          if ($signature -isnot [string]) { $signature = [System.Text.Encoding]::UTF8.GetString($signature) }
-          $signature = $signature.Trim()
-          Write-Host "Signatura pridobljena (prvih 40 znakov): $($signature.Substring(0, [Math]::Min(40,$signature.Length)))"
+            Write-Host "=== Vse .sig datoteke ==="
+            $sigFiles = Get-ChildItem -Recurse "." -Filter "*.sig" -ErrorAction SilentlyContinue
+            $sigFiles | ForEach-Object { Write-Host "  $($_.FullName)" }
 
-          # Poišci .exe asset
-          $exeAsset = $release.assets | Where-Object { $_.name -like "*setup.exe" } | Select-Object -First 1
-          Write-Host "Exe asset: $($exeAsset.name)"
+            $sigFile = $sigFiles | Where-Object { $_.Name -notlike "*msi*" -and $_.Name -notlike "*MSI*" } | Select-Object -First 1
+            if (-not $sigFile) { $sigFile = $sigFiles | Select-Object -First 1 }
 
-          $latestJson = [ordered]@{
-            version  = $VERSION
-            notes    = "Nova razlicica Perfect Text."
-            pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
-            platforms = [ordered]@{
-              "windows-x86_64" = [ordered]@{
-                url       = $exeAsset.browser_download_url
-                signature = $signature
-              }
+            if (-not $sigFile) {
+              Write-Host "NAPAKA: Ni .sig datotek - podpisovanje ni delalo."
+              exit 1
             }
-          } | ConvertTo-Json -Depth 5
 
-          Write-Host "Generirani latest.json:"
-          Write-Host $latestJson
+            $signature = (Get-Content $sigFile.FullName -Raw).Trim()
+            $exeFile = Get-ChildItem -Recurse "src-tauri/target/release/bundle" -Filter "*setup.exe" | Select-Object -First 1
+            $exeUrl = "https://github.com/andrej99ai/tipkam-si-desktop/releases/download/$TAG/$($exeFile.Name)"
+
+            $content = [ordered]@{
+              version  = $VERSION
+              notes    = "Nova razlicica Perfect Text."
+              pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+              platforms = [ordered]@{
+                "windows-x86_64" = [ordered]@{
+                  url       = $exeUrl
+                  signature = $signature
+                }
+              }
+            } | ConvertTo-Json -Depth 5
+            Write-Host "latest.json generiran iz .sig datoteke"
+          }
+
+          Write-Host "=== Koncni latest.json ==="
+          Write-Host $content
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git checkout main
-          Set-Content -Path latest.json -Value $latestJson -Encoding UTF8
+          Set-Content -Path latest.json -Value $content -Encoding UTF8
           git add latest.json
           git diff --cached --quiet
           if ($LASTEXITCODE -ne 0) {
             git commit -m "chore: update latest.json for $TAG"
             git push origin main
-            Write-Host "latest.json uspesno posodobljen!"
+            Write-Host "USPEH: latest.json posodobljen!"
           } else {
             Write-Host "Ni sprememb v latest.json"
           }
