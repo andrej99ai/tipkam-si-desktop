@@ -36,6 +36,16 @@ jobs:
           $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json -Encoding UTF8
           Write-Host "Version set to $VERSION"
 
+      - name: Prepare signing key
+        shell: pwsh
+        env:
+          KEY_RAW: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          # Strip all whitespace (newlines injected by browser/GitHub when pasting long base64)
+          $cleanKey = $env:KEY_RAW -replace '\s', ''
+          Write-Host "Key length after cleanup: $($cleanKey.Length)"
+          echo "TAURI_SIGNING_KEY=$cleanKey" >> $env:GITHUB_ENV
+
       - name: Install frontend dependencies
         run: npm install
 
@@ -43,7 +53,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: ${{ github.ref_name }}
