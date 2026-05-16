@@ -36,6 +36,7 @@ export interface Translations {
   statusReady: (key: string) => string;
   statusRecording: (key: string) => string;
   statusConnecting: string;
+  statusPreparingMic: string;
   statusProcessing: string;
   statusDone: string;
   statusError: string;
@@ -124,6 +125,7 @@ const sl: Translations = {
   statusReady: (key) => `Pripravljen — pritisni ${key} za narekovanje`,
   statusRecording: (key) => `Snemam... Pritisni ${key} za ustavitev`,
   statusConnecting: "Vzpostavljam povezavo...",
+  statusPreparingMic: "Pripravljam mikrofon...",
   statusProcessing: "Obdelujem narekovanje...",
   statusDone: "Besedilo prilepljeno!",
   statusError: "Napaka",
@@ -202,6 +204,7 @@ const en: Translations = {
   statusReady: (key) => `Ready — press ${key} to dictate`,
   statusRecording: (key) => `Recording... Press ${key} to stop`,
   statusConnecting: "Connecting...",
+  statusPreparingMic: "Preparing microphone...",
   statusProcessing: "Processing dictation...",
   statusDone: "Text pasted!",
   statusError: "Error",
@@ -280,6 +283,7 @@ const it: Translations = {
   statusReady: (key) => `Pronto — premi ${key} per dettare`,
   statusRecording: (key) => `Registrazione... Premi ${key} per fermare`,
   statusConnecting: "Connessione in corso...",
+  statusPreparingMic: "Preparazione del microfono...",
   statusProcessing: "Elaborazione dettatura...",
   statusDone: "Testo incollato!",
   statusError: "Errore",
