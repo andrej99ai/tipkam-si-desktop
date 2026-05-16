@@ -648,6 +648,11 @@ async function handleShortcutPress() {
   } else {
     // ── Standard mode: MediaRecorder (accurate / fast) ──
     try {
+      // Show "preparing mic" (yellow) immediately — gives instant visual
+      // feedback while getUserMedia + MediaRecorder warm-up runs (~200–500 ms
+      // on cold start). This matches the "connecting" state shown in live
+      // mode and signals to the user "wait for red before speaking".
+      setStatus("processing", t().statusPreparingMic);
       await startRecording();
       micPermissionGranted = true;
       setStatus("recording");

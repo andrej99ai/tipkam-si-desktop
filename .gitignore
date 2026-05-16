@@ -18,3 +18,8 @@ Thumbs.db
 # Environment files (for safety)
 .env
 .env.local
+
+# Signing keys — NEVER commit private minisign keys
+tipkam.key
+*.key
+!tipkam.key.pub

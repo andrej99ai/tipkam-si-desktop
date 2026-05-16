@@ -36,15 +36,19 @@ jobs:
           $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json -Encoding UTF8
           Write-Host "Version set to $VERSION"
 
-      - name: Prepare signing key
+      - name: Write signing key to file
         shell: pwsh
         env:
-          KEY_RAW: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          # Strip all whitespace (newlines injected by browser/GitHub when pasting long base64)
-          $cleanKey = $env:KEY_RAW -replace '\s', ''
-          Write-Host "Key length after cleanup: $($cleanKey.Length)"
-          echo "TAURI_SIGNING_KEY=$cleanKey" >> $env:GITHUB_ENV
+          # Secret is raw minisign key content; normalize CRLF, write WITHOUT BOM
+          $key = $env:TAURI_SIGNING_PRIVATE_KEY -replace "`r`n", "`n" -replace "`r", "`n"
+          Write-Host "Key length: $($key.Length)"
+          Write-Host "Key first line: $($key.Split("`n")[0])"
+          $keyPath = Join-Path $env:RUNNER_TEMP "tauri_signing.key"
+          [System.IO.File]::WriteAllText($keyPath, $key, [System.Text.UTF8Encoding]::new($false))
+          echo "TAURI_KEY_PATH=$keyPath" >> $env:GITHUB_ENV
+          Write-Host "Key written to: $keyPath"
 
       - name: Install frontend dependencies
         run: npm install
@@ -53,7 +57,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_KEY_PATH }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: ${{ github.ref_name }}
