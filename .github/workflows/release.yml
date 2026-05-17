@@ -84,7 +84,7 @@ jobs:
             Write-Host "tauri-action generiral veljaven latest.json za $VERSION"
             $content = $currentJson
           } else {
-            Write-Host "Iščem .sig datoteke..."
+            Write-Host "IĹˇÄŤem .sig datoteke..."
             Write-Host "=== Bundle mapa ==="
             Get-ChildItem -Recurse "src-tauri/target/release/bundle" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
 
@@ -124,7 +124,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
-          git checkout main
+          git checkout -f main
           Set-Content -Path latest.json -Value $content -Encoding UTF8
           git add latest.json
           git diff --cached --quiet
