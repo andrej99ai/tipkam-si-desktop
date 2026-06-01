@@ -508,6 +508,23 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+/* ─── Non-modal mic warning (silence watchdog) ──────────────────────────── */
+
+.mic-warning {
+  width: 100%;
+  max-width: 400px;
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.9rem;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-lg);
+  color: #92400e;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  animation: fadeIn 0.25s ease-out;
+}
+
 /* ─── Error Panel ───────────────────────────────────────────────────────── */
 
 .error-panel {

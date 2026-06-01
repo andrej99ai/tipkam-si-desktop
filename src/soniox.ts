@@ -24,6 +24,12 @@ import { DictationError } from "./dictation";
 export interface SonioxCallbacks {
   /** Called with the full current transcript text (final + partial preview) */
   onTranscriptUpdate: (text: string) => void;
+  /** Mikrofon odklopljen/utišan ALI povezava prekinjena med sejo (fatalno) */
+  onDisconnect?: () => void;
+  /** 15 s brez novih tokenov — nemodalno opozorilo, seje NE ustavimo */
+  onSilence?: () => void;
+  /** Prvi token po opozorilu — skrij opozorilo */
+  onSound?: () => void;
 }
 
 // ─── Error classification ────────────────────────────────────────────────────
@@ -77,6 +83,12 @@ export class SonioxSession {
   private nonFinalPreview = "";
   private durationStartTime = 0;
   private isStopping = false;
+
+  // ── Silence watchdog (token-based) ──
+  private silenceTimer: ReturnType<typeof setInterval> | null = null;
+  private lastTokenTime = 0;
+  private silenceWarned = false;
+  private static readonly SILENCE_WINDOW_MS = 15_000;
 
   /** Resolved when <fin> marker arrives (manual finalize signal) */
   private finResolve: (() => void) | null = null;
@@ -192,7 +204,40 @@ export class SonioxSession {
     // Connect to destination (required for ScriptProcessorNode to fire)
     this.processor.connect(this.audioContext.destination);
 
+    // 8. Active monitoring: mic fizično odklopljen / sistemsko utišan
+    const micTrack = this.stream!.getAudioTracks()[0];
+    if (micTrack) {
+      micTrack.onended = () => this.fireDisconnect();
+      micTrack.onmute = () => this.fireDisconnect();
+    }
+
+    // 9. WebSocket nepričakovano zaprtje med sejo (koda != 1000 = napaka)
+    this.ws.onclose = (e: CloseEvent) => {
+      if (this.isStopping) return; // pričakovano zaprtje ob stop()
+      if (e.code !== 1000) this.fireDisconnect();
+    };
+
+    // 10. Silence watchdog — vsako sekundo preveri, ali so prihajali tokeni.
+    //     Seje NE ustavljamo (uporabnik morda samo razmišlja), le opozorimo.
+    this.lastTokenTime = Date.now();
+    this.silenceTimer = setInterval(() => {
+      if (this.isStopping) return;
+      const quiet = Date.now() - this.lastTokenTime > SonioxSession.SILENCE_WINDOW_MS;
+      if (quiet && !this.silenceWarned) {
+        this.silenceWarned = true;
+        this.callbacks.onSilence?.();
+      }
+    }, 1000);
+
     this.durationStartTime = Date.now();
+  }
+
+  /** Enkratni sprožilec za fatalno prekinitev (mic/WS). Idempotenten. */
+  private disconnectFired = false;
+  private fireDisconnect() {
+    if (this.disconnectFired || this.isStopping) return;
+    this.disconnectFired = true;
+    this.callbacks.onDisconnect?.();
   }
 
   /**
@@ -207,6 +252,12 @@ export class SonioxSession {
     this.isStopping = true;
     const durationSeconds =
       Math.round(((Date.now() - this.durationStartTime) / 1000) * 10) / 10;
+
+    // 0. Ustavi silence watchdog
+    if (this.silenceTimer !== null) {
+      clearInterval(this.silenceTimer);
+      this.silenceTimer = null;
+    }
 
     // 1. Stop audio chain (stop sending PCM)
     try { this.source?.disconnect(); } catch (_) { /* */ }
@@ -277,6 +328,15 @@ export class SonioxSession {
           newFinal += txt;
         } else {
           newNonFinal += txt;
+        }
+      }
+
+      // Reset silence watchdog ob vsakem dejanskem (ne-praznem) tokenu
+      if (newFinal.trim() || newNonFinal.trim()) {
+        this.lastTokenTime = Date.now();
+        if (this.silenceWarned) {
+          this.silenceWarned = false;
+          this.callbacks.onSound?.();
         }
       }
 

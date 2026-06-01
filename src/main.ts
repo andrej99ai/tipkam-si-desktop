@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { startRecording, stopRecording, isRecording } from "./recorder";
 import { processDictation, DictationMode, DictationError } from "./dictation";
 import { SonioxSession } from "./soniox";
+import { preflightCheck, mapMicError, MIC_ISSUE_I18N } from "./preflight";
 import { LANGUAGES, isSlovenian } from "./languages";
 import { t, setUILanguage, getUILanguage, UILanguage, UI_LANGUAGES } from "./i18n";
 import { listen } from "@tauri-apps/api/event";
@@ -39,6 +40,8 @@ const shortcutSelect = document.getElementById("shortcut-select") as HTMLSelectE
 const shortcutDisplay = document.getElementById("shortcut-key") as HTMLElement;
 const uiLangLogin = document.getElementById("ui-lang-login") as HTMLSelectElement;
 const uiLangMain = document.getElementById("ui-lang-main") as HTMLSelectElement;
+const micWarning = document.getElementById("mic-warning") as HTMLDivElement;
+const micWarningText = document.getElementById("mic-warning-text") as HTMLSpanElement;
 const errorPanel = document.getElementById("error-panel") as HTMLDivElement;
 const errorPanelSubtitle = document.getElementById("error-panel-subtitle") as HTMLParagraphElement;
 const errorStepWeb = document.getElementById("error-step-web") as HTMLDivElement;
@@ -533,6 +536,64 @@ async function handleLogout() {
   showLogin();
 }
 
+// ─── Non-modal mic warning (silence watchdog) ──────────────────────────────
+function showMicWarning() {
+  if (micWarning && micWarningText) {
+    micWarningText.textContent = t().micSilenceWarning;
+    micWarning.style.display = "block";
+  }
+}
+function hideMicWarning() {
+  if (micWarning) micWarning.style.display = "none";
+}
+
+/** Lokalizirano sporočilo za pred-snemalno / getUserMedia napako mikrofona */
+function micMessage(err: any): string {
+  const issue = mapMicError(err);
+  const key = MIC_ISSUE_I18N[issue];
+  return (t() as any)[key] ?? t().micError;
+}
+
+/** Prikaže napako mikrofona takoj (preden uporabnik govori) in se vrne v ready. */
+function showMicError(message: string) {
+  setStatus("error", message);
+  setTimeout(() => {
+    if (!isRecording() && !activeSonioxSession) setStatus("ready");
+  }, 6000);
+}
+
+// ─── Finalize standard (MediaRecorder) recording ────────────────────────────
+// Skupna pot za: (a) normalni drugi pritisk F2, (b) samodejni abort ob izgubi
+// mikrofona. `lostMic` ob izgubi prikaže ustrezno sporočilo, a vseeno obdela
+// in prilepi dosedanji posnetek (besedila ne zavržemo).
+async function finalizeStandardRecording(lostMic = false) {
+  if (isProcessing || !isRecording()) return;
+  isProcessing = true;
+  hideMicWarning();
+  setStatus("processing");
+  try {
+    const { audioBase64, durationSeconds } = await stopRecording();
+    const result = await processDictation(audioBase64, currentMode, currentLanguage, durationSeconds);
+    await invoke("copy_and_paste", { text: result.final_text });
+    setStatus("done", t().statusDone);
+    showLastTranscript(result.final_text);
+    if (lostMic) {
+      // Po prilepitvi še na kratko sporoči, da je bil mikrofon odklopljen.
+      setTimeout(() => setStatus("error", t().micDisconnected), 1500);
+    }
+    setTimeout(() => {
+      if (!isRecording() && !activeSonioxSession) setStatus("ready");
+    }, lostMic ? 6000 : 4000);
+  } catch (err: any) {
+    console.error("Dictation error:", err);
+    await bringWindowToFront();
+    setStatus("error");
+    showErrorPanel(err instanceof DictationError ? err : undefined);
+  } finally {
+    isProcessing = false;
+  }
+}
+
 // ─── F2 / Shortcut handler ─────────────────────────────────────────────────
 async function handleShortcutPress() {
   const now = Date.now();
@@ -574,30 +635,25 @@ async function handleShortcutPress() {
 
   // ── Case 2: MediaRecorder active → stop & process ──────────────────────
   if (isRecording()) {
-    isProcessing = true;
-    setStatus("processing");
-    try {
-      const { audioBase64, durationSeconds } = await stopRecording();
-      const result = await processDictation(audioBase64, currentMode, currentLanguage, durationSeconds);
-      await invoke("copy_and_paste", { text: result.final_text });
-      setStatus("done", t().statusDone);
-      showLastTranscript(result.final_text);
-      setTimeout(() => {
-        if (!isRecording()) setStatus("ready");
-      }, 4000);
-    } catch (err: any) {
-      console.error("Dictation error:", err);
-      await bringWindowToFront();
-      setStatus("error");
-      showErrorPanel(err instanceof DictationError ? err : undefined);
-    } finally {
-      isProcessing = false;
-    }
+    await finalizeStandardRecording(false);
     return;
   }
 
   // ── Case 3: Nothing active → start recording ───────────────────────────
   if (!micPermissionGranted) await bringWindowToFront();
+
+  // ── FAIL-FAST PRE-FLIGHT ──
+  // Preveri dovoljenje + prisotnost naprave PREDEN karkoli zaženemo. Če je
+  // mikrofon blokiran ali ga ni, uporabnika opozorimo TAKOJ — preden govori.
+  // (getUserMedia se ne porabi tukaj; "busy"/"constraint" napake se ujamejo
+  // ob pravem zajemu spodaj, kar je še vedno pred rdečim indikatorjem.)
+  hideMicWarning();
+  const issue = await preflightCheck();
+  if (issue) {
+    await bringWindowToFront();
+    showMicError((t() as any)[MIC_ISSUE_I18N[issue]] ?? t().micError);
+    return;
+  }
 
   if (currentMode === "live") {
     // ── Live mode: Soniox WebSocket streaming ──
@@ -611,6 +667,12 @@ async function handleShortcutPress() {
           // Update the live transcript panel in real time
           updateLiveTranscript(text);
         },
+        // Mikrofon odklopljen ALI WebSocket prekinjen med sejo → ustavi in
+        // ohrani dosedanje besedilo.
+        onDisconnect: () => abortLiveSession(),
+        // 15 s brez tokenov → nemodalno opozorilo (seje NE ustavljamo).
+        onSilence: () => showMicWarning(),
+        onSound: () => hideMicWarning(),
       });
       await session.start();
       activeSonioxSession = session;
@@ -632,14 +694,9 @@ async function handleShortcutPress() {
       if (err instanceof DictationError) {
         // Quota, auth, or generic — error panel handles all DictationError types
         showErrorPanel(err);
-      } else if (
-        err?.name === "NotAllowedError" ||
-        err?.name === "PermissionDeniedError" ||
-        err?.name === "NotFoundError"
-      ) {
-        // Actual microphone permission/hardware issue
-        setStatus("error", t().micError);
-        setTimeout(() => setStatus("ready"), 5000);
+      } else if (err instanceof DOMException && mapMicError(err) !== "unknown") {
+        // Mikrofon: blokiran / ni najden / zaseden / … — specifično sporočilo
+        showMicError(micMessage(err));
       } else {
         // Unknown error (AudioContext, network, etc.) — show generic error panel
         showErrorPanel(new DictationError(err?.message || "Live mode error", "generic"));
@@ -653,16 +710,44 @@ async function handleShortcutPress() {
       // on cold start). This matches the "connecting" state shown in live
       // mode and signals to the user "wait for red before speaking".
       setStatus("processing", t().statusPreparingMic);
-      await startRecording();
+      await startRecording({
+        // Mikrofon odklopljen/utišan med snemanjem → obdelaj dosedanji posnetek.
+        onLost: () => { void finalizeStandardRecording(true); },
+        // RMS watchdog: 15 s tišine → nemodalno opozorilo.
+        onSilence: () => showMicWarning(),
+        onSound: () => hideMicWarning(),
+      });
       micPermissionGranted = true;
       setStatus("recording");
     } catch (err: any) {
       console.error("Recording start error:", err);
       await bringWindowToFront();
-      setStatus("error", t().micError);
-      setTimeout(() => setStatus("ready"), 5000);
+      // Specifično sporočilo glede na vrsto napake mikrofona.
+      showMicError(micMessage(err));
     }
   }
+}
+
+/** Ustavi aktivno Soniox sejo ob izgubi mikrofona/povezave, ohrani besedilo. */
+async function abortLiveSession() {
+  if (!activeSonioxSession || isProcessing) return;
+  isProcessing = true;
+  hideMicWarning();
+  const session = activeSonioxSession;
+  activeSonioxSession = null;
+  try {
+    const { text } = await session.stop();
+    if (text.trim()) {
+      await invoke("copy_and_paste", { text });
+      showLastTranscript(text);
+    }
+  } catch (_) { /* */ }
+  await bringWindowToFront();
+  setStatus("error", t().micDisconnected);
+  setTimeout(() => {
+    if (!isRecording() && !activeSonioxSession) setStatus("ready");
+  }, 6000);
+  isProcessing = false;
 }
 
 /** Update the transcript panel with live (in-progress) text */

@@ -43,6 +43,18 @@ export interface Translations {
   shortcutHint: string;
   micError: string;
 
+  // Fail-fast microphone pre-flight messages (shown BEFORE the user speaks)
+  micBlocked: string;
+  micNotFound: string;
+  micBusy: string;
+  micConstraint: string;
+  micInsecure: string;
+  micAborted: string;
+  micGeneric: string;
+  // Active monitoring during recording
+  micDisconnected: string;
+  micSilenceWarning: string;
+
   // Transcript
   lastTranscriptLabel: string;
 
@@ -132,6 +144,16 @@ const sl: Translations = {
   shortcutHint: "za začetek / ustavitev narekovanja",
   micError: "Mikrofon ni dostopen — odobri dovoljenje v oknu",
 
+  micBlocked: "Mikrofon je blokiran. Omogoči ga v Nastavitve Windows → Zasebnost → Mikrofon.",
+  micNotFound: "Mikrofona ni mogoče najti. Priklopi mikrofon in poskusi znova.",
+  micBusy: "Mikrofon uporablja drug program (npr. Zoom, Teams). Zapri ga in poskusi znova.",
+  micConstraint: "Mikrofon ne podpira zahtevanih nastavitev.",
+  micInsecure: "Varnostna napaka pri dostopu do mikrofona — kontaktiraj podporo.",
+  micAborted: "Dostop do mikrofona je bil prekinjen. Poskusi znova.",
+  micGeneric: "Mikrofon ni dostopen. Preveri priklop in dovoljenja.",
+  micDisconnected: "Mikrofon je bil odklopljen. Snemanje ustavljeno — dosedanje besedilo je ohranjeno.",
+  micSilenceWarning: "⚠ Ne slišimo te. Preveri mikrofon.",
+
   lastTranscriptLabel: "ZADNJI TRANSKRIPT:",
 
   shortcutLabel: "Bližnjica",
@@ -211,6 +233,16 @@ const en: Translations = {
   shortcutHint: "to start / stop dictation",
   micError: "Microphone not available — allow permission in window",
 
+  micBlocked: "Microphone is blocked. Enable it in Windows Settings → Privacy → Microphone.",
+  micNotFound: "No microphone found. Connect a microphone and try again.",
+  micBusy: "The microphone is in use by another app (e.g. Zoom, Teams). Close it and try again.",
+  micConstraint: "The microphone does not support the required settings.",
+  micInsecure: "Security error accessing the microphone — contact support.",
+  micAborted: "Microphone access was interrupted. Please try again.",
+  micGeneric: "Microphone not available. Check the connection and permissions.",
+  micDisconnected: "The microphone was disconnected. Recording stopped — your text so far is preserved.",
+  micSilenceWarning: "⚠ We can't hear you. Check your microphone.",
+
   lastTranscriptLabel: "LAST TRANSCRIPT:",
 
   shortcutLabel: "Shortcut",
@@ -289,6 +321,16 @@ const it: Translations = {
   statusError: "Errore",
   shortcutHint: "per avviare / fermare la dettatura",
   micError: "Microfono non disponibile — consenti l'accesso nella finestra",
+
+  micBlocked: "Il microfono è bloccato. Abilitalo in Impostazioni Windows → Privacy → Microfono.",
+  micNotFound: "Nessun microfono trovato. Collega un microfono e riprova.",
+  micBusy: "Il microfono è usato da un'altra app (es. Zoom, Teams). Chiudila e riprova.",
+  micConstraint: "Il microfono non supporta le impostazioni richieste.",
+  micInsecure: "Errore di sicurezza nell'accesso al microfono — contatta il supporto.",
+  micAborted: "L'accesso al microfono è stato interrotto. Riprova.",
+  micGeneric: "Microfono non disponibile. Controlla il collegamento e i permessi.",
+  micDisconnected: "Il microfono è stato scollegato. Registrazione interrotta — il testo finora è conservato.",
+  micSilenceWarning: "⚠ Non ti sentiamo. Controlla il microfono.",
 
   lastTranscriptLabel: "ULTIMA TRASCRIZIONE:",
 
