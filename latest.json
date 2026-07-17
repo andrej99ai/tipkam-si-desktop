@@ -1,19 +1,19 @@
 {
-  "version": "0.3.10",
+  "version": "0.3.11",
   "notes": "Nova razlicica Perfect Text.",
-  "pub_date": "2026-07-17T10:40:28.252Z",
+  "pub_date": "2026-07-17T11:16:36.328Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMVhKZVV5WnlubXB5ZnZaNERwSDlFMTRUWnBvcDJ4NzRIRUZsSFRDTXh0bm1XcUhOSEoyUWZHQTR4czFyVW1Yek1mK3FaWDRDQjY5NVZpUGhjRDA0MUpVdUg2K0d0ZEFNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mjg0ODI0CWZpbGU6UGVyZmVjdCBUZXh0XzAuMy4xMF94NjRfZW4tVVMubXNpCnE0V3ZPZVZrdDA5K09ZTGxETVBMNi95NlU0TEo1TkhHdlBLa0RGTHdoc0c4R3lKb2Qvdjg1R0RubG92SjdKandtdE9lY2RKYkxscFB3YlJIMmNoVUFnPT0K",
-      "url": "https://github.com/andrej99ai/tipkam-si-desktop/releases/download/v0.3.10/Perfect.Text_0.3.10_x64_en-US.msi"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMVhKZVV5WnlubXNuay9kMDdrNEZEZEdsV2xpejluYlBCYTJ5Q0lpUnFVS212Q1BqdThNVnJsZzM3b3MxMExkU1dRdGFRY1Z4NWI4ak55NTlLR040Z0pFeWxEM0Y2L2dNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mjg2OTkyCWZpbGU6UGVyZmVjdCBUZXh0XzAuMy4xMV94NjRfZW4tVVMubXNpCkttelRBa1drSm9yVEtEMjlyb2hTeDFheXRtdHpoNCtFYVIrdmYyR2xQQkFaM3FVVFRkd3lTMWFuVGhnb3lMbnNaalArR2diSzZMQmxYYng5d3VSSkF3PT0K",
+      "url": "https://github.com/andrej99ai/tipkam-si-desktop/releases/download/v0.3.11/Perfect.Text_0.3.11_x64_en-US.msi"
     },
     "windows-x86_64-msi": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMVhKZVV5WnlubXB5ZnZaNERwSDlFMTRUWnBvcDJ4NzRIRUZsSFRDTXh0bm1XcUhOSEoyUWZHQTR4czFyVW1Yek1mK3FaWDRDQjY5NVZpUGhjRDA0MUpVdUg2K0d0ZEFNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mjg0ODI0CWZpbGU6UGVyZmVjdCBUZXh0XzAuMy4xMF94NjRfZW4tVVMubXNpCnE0V3ZPZVZrdDA5K09ZTGxETVBMNi95NlU0TEo1TkhHdlBLa0RGTHdoc0c4R3lKb2Qvdjg1R0RubG92SjdKandtdE9lY2RKYkxscFB3YlJIMmNoVUFnPT0K",
-      "url": "https://github.com/andrej99ai/tipkam-si-desktop/releases/download/v0.3.10/Perfect.Text_0.3.10_x64_en-US.msi"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMVhKZVV5WnlubXNuay9kMDdrNEZEZEdsV2xpejluYlBCYTJ5Q0lpUnFVS212Q1BqdThNVnJsZzM3b3MxMExkU1dRdGFRY1Z4NWI4ak55NTlLR040Z0pFeWxEM0Y2L2dNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mjg2OTkyCWZpbGU6UGVyZmVjdCBUZXh0XzAuMy4xMV94NjRfZW4tVVMubXNpCkttelRBa1drSm9yVEtEMjlyb2hTeDFheXRtdHpoNCtFYVIrdmYyR2xQQkFaM3FVVFRkd3lTMWFuVGhnb3lMbnNaalArR2diSzZMQmxYYng5d3VSSkF3PT0K",
+      "url": "https://github.com/andrej99ai/tipkam-si-desktop/releases/download/v0.3.11/Perfect.Text_0.3.11_x64_en-US.msi"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMVhKZVV5WnlubWxiejFiVmlkQkxaT0ZacFFiT0lpQ2FXVmJjMHA5cGM1TnlUZzg1aW9lTzBrZm1PRWFVR29yWElGWktGWkR0MEFMV0xYd1NDZExUUi9kN0tOZVlkS3dJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mjg0ODI0CWZpbGU6UGVyZmVjdCBUZXh0XzAuMy4xMF94NjQtc2V0dXAuZXhlCjRrZ1EvT2ZZQ3FzakNXelc0RTlVUFIzaFR5T0FsbXlzYlpEd0Z6RTVHaGw1eHFzUnA1Q1FkTmRhT3lEZVlneXUydlJuM3JxSnVJVkIzL0NvRzJPaUF3PT0K",
-      "url": "https://github.com/andrej99ai/tipkam-si-desktop/releases/download/v0.3.10/Perfect.Text_0.3.10_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMVhKZVV5WnlubWkzbDRQc1RudVpiOTBqcWRqa29PZkY5cmZTa0NWSWRaRTlvRXJmQXpqWHpuWnVxa3JXdzlaOWx4cE9KdXp3bXhZNGUwQmt1N2FCMGRRY3BqWnc1TGdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mjg2OTkyCWZpbGU6UGVyZmVjdCBUZXh0XzAuMy4xMV94NjQtc2V0dXAuZXhlCjlFN3ZleVV5UnNRVUZTc0l4TUI0bmNDczlZSFdTazJNa1U2MFhBdU1FRFBYUE0wdWlURFZmelc0WHZlTWZDQ01BNWlpcWliODRUclhvUXRIUndFeUJ3PT0K",
+      "url": "https://github.com/andrej99ai/tipkam-si-desktop/releases/download/v0.3.11/Perfect.Text_0.3.11_x64-setup.exe"
     }
   }
 }
