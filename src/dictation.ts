@@ -56,14 +56,18 @@ function classifyError(error: any, data: any): DictationError {
   return new DictationError(error?.message || "Unknown error", "generic");
 }
 
-const TRANSCRIPTION_TIMEOUT_MS = 60_000; // 60 seconds
+// Timeout po načinu: Gemini Pro (accurate) na daljših posnetkih pogosto
+// potrebuje več kot 60 s — spletna aplikacija sploh nima timeouta, zato tam
+// napake ni. 60 s je bil glavni vzrok "ni transkripta" napak na desktopu.
+const TIMEOUT_FAST_MS = 90_000;      // 1,5 min za Flash
+const TIMEOUT_ACCURATE_MS = 240_000; // 4 min za Pro (dolgi posnetki + thinking)
 
 /**
  * Pošlje avdio na Supabase Edge Function za transkripcijo.
  *
  * Tok:
  * 1. Kliče "voice-to-text" Edge Function z audio, mime_type, language_code, mode
- * 2. Za slovenščino + "accurate" način dodatno kliče "proofread-text" za lektoriranje
+ * 2. Za SL + accurate backend že sam lektorira (združen Gemini Pro prompt)
  *
  * Logika izbire modela (v Edge Function):
  * - language_code = "sl" + mode != "fast" → Gemini 2.5 Pro
@@ -99,10 +103,12 @@ export async function processDictation(
   let data: any;
   let error: any;
 
+  const timeoutMs = (isSlovenian && mode !== "fast") ? TIMEOUT_ACCURATE_MS : TIMEOUT_FAST_MS;
+
   try {
     const result = await withTimeout(
       supabase.functions.invoke("voice-to-text", { body }),
-      TRANSCRIPTION_TIMEOUT_MS
+      timeoutMs
     );
     data = result.data;
     error = result.error;
@@ -121,34 +127,20 @@ export async function processDictation(
     if (data && (data.error || data.message)) {
       throw classifyError({ message: data.error || data.message }, data);
     }
-    throw new DictationError("Ni prejetega transkripta od strežnika.", "quota");
+    // Prej napačno klasificirano kot "quota" — prazen odgovor je strežniška
+    // napaka, ne prekoračena kvota. Napačno sporočilo je uporabnike begalo.
+    throw new DictationError("Ni prejetega transkripta od strežnika.", "generic");
   }
 
   const rawTranscript = data.text as string;
 
-  // ── Korak 2: Lektoriranje (samo za SL + accurate) ──
-  if (isSlovenian && mode === "accurate") {
-    try {
-      const { data: proofData, error: proofError } =
-        await supabase.functions.invoke("proofread-text", {
-          body: {
-            text: rawTranscript,
-          },
-        });
+  // OPOMBA: Ločen klic "proofread-text" za SL + accurate je ODSTRANJEN.
+  // Backend (voice-to-text) za SL accurate način že uporablja združen
+  // Gemini Pro prompt, ki transkribira IN lektorira v enem klicu.
+  // Dodaten proofread klic je le podvajal delo, podaljšal čakanje
+  // in dodal še eno možno točko odpovedi.
 
-      if (!proofError && proofData && proofData.text) {
-        return {
-          raw_transcript: rawTranscript,
-          final_text: proofData.text as string,
-        };
-      }
-    } catch (e) {
-      // Če lektoriranje ne uspe, vrni surovi transkript
-      console.warn("Proofread failed, using raw transcript:", e);
-    }
-  }
-
-  // ── Za "fast" način ali druge jezike: vrni surovi transkript ──
+  // ── Vrni transkript (backend že vrne lektorirano besedilo za SL accurate) ──
   return {
     raw_transcript: rawTranscript,
     final_text: rawTranscript,
