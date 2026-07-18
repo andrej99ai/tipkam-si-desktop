@@ -667,6 +667,10 @@ async function handleShortcutPress() {
           // Update the live transcript panel in real time
           updateLiveTranscript(text);
         },
+        // Zajem teče (zvok se shranjuje) → RDEČA TAKOJ, čeprav se WebSocket
+        // še vzpostavlja v ozadju. Nič se ne izgubi — vzorci gredo v
+        // predpomnilnik in se ob vzpostavitvi povezave pošljejo naprej.
+        onCaptureStarted: () => setStatus("recording"),
         // Mikrofon odklopljen ALI WebSocket prekinjen med sejo → ustavi in
         // ohrani dosedanje besedilo.
         onDisconnect: () => abortLiveSession(),

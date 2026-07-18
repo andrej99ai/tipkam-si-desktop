@@ -30,6 +30,12 @@ export interface SonioxCallbacks {
   onSilence?: () => void;
   /** Prvi token po opozorilu — skrij opozorilo */
   onSound?: () => void;
+  /**
+   * Zajem zvoka teče (mikrofon odprt, vzorci se shranjujejo v predpomnilnik).
+   * Od tega trenutka uporabnik lahko VARNO govori — nič se ne izgubi, tudi
+   * če WebSocket povezava še ni vzpostavljena. UI naj tu pokaže rdeče stanje.
+   */
+  onCaptureStarted?: () => void;
 }
 
 // ─── Error classification ────────────────────────────────────────────────────
@@ -116,70 +122,50 @@ export class SonioxSession {
     try {
       await this.setupAfterMic();
     } catch (err) {
-      // If anything fails after we have the mic, release it cleanly.
+      // If anything fails after we have the mic, release EVERYTHING cleanly
+      // (zajem zdaj steče pred povezovanjem, zato je treba pospraviti tudi
+      // audio verigo in morebitni napol odprt WebSocket).
+      this.isStopping = true;
+      try { this.processor?.disconnect(); } catch (_) { /* */ }
+      try { this.source?.disconnect(); } catch (_) { /* */ }
+      try { this.audioContext?.close(); } catch (_) { /* */ }
+      try { this.ws?.close(); } catch (_) { /* */ }
+      this.processor = null;
+      this.source = null;
+      this.audioContext = null;
+      this.ws = null;
+      this.preBuffer = [];
+      this.preBufferedBytes = 0;
       try { this.stream.getTracks().forEach((t) => t.stop()); } catch (_) { /* */ }
       this.stream = null;
       throw err;
     }
   }
 
+  // ── Pre-buffer: zvok, zajet preden je WebSocket pripravljen ──
+  private preBuffer: ArrayBuffer[] = [];
+  private preBufferedBytes = 0;
+  /** Varnostna kapica: 60 s Int16 @ 16 kHz (če se povezava nikoli ne vzpostavi) */
+  private static readonly PRE_BUFFER_MAX_BYTES = 2 * 16000 * 60;
+  /** true šele, ko je config poslan in je predpomnilnik izpraznjen */
+  private streamingLive = false;
+
   /** All setup steps that follow after the microphone stream is acquired. */
   private async setupAfterMic(): Promise<void> {
-    // 2. Fetch ephemeral Soniox key (also validates user quota)
-    const { data, error } = await supabase.functions.invoke("soniox-temp-key", {
-      body: {},
-    });
-
-    if (error || !data?.api_key) {
-      throw classifySonioxKeyError(error, data);
-    }
-    const tempKey = data.api_key as string;
-
-    // 3. AudioContext — request 16 kHz (Soniox requirement)
+    // 2. Začni ZAJEM TAKOJ — vsak vzorec od tega trenutka gre v predpomnilnik,
+    //    dokler WebSocket ni pripravljen. Uporabnik lahko govori takoj po
+    //    rdečem indikatorju; prve besede se NE izgubijo več.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const AC = window.AudioContext ?? (window as any).webkitAudioContext;
     this.audioContext = new AC({ sampleRate: 16000 });
     const actualRate = this.audioContext.sampleRate;
 
-    // 4. Open WebSocket
-    this.ws = new WebSocket("wss://stt-rt.soniox.com/transcribe-websocket");
-
-    await new Promise<void>((resolve, reject) => {
-      this.ws!.onopen = () => resolve();
-      this.ws!.onerror = () =>
-        reject(
-          new DictationError("WebSocket connection to Soniox failed", "generic")
-        );
-    });
-
-    // 5. Send config (text frame)
-    this.ws.send(
-      JSON.stringify({
-        api_key: tempKey,
-        model: "stt-rt-preview",
-        audio_format: "pcm_s16le",
-        sample_rate: 16000,
-        num_channels: 1,
-        language_hints: ["sl"],
-        language_hints_strict: true,
-        enable_endpoint_detection: false, // must be false — avoids unwanted <end> tokens
-      })
-    );
-
-    // 6. Message handler
-    this.ws.onmessage = (e) => this.handleMessage(e);
-    this.ws.onerror = () => {
-      // Non-fatal mid-session WS error — log only; onmessage handles error responses
-      console.warn("[Soniox] WebSocket error during live session");
-    };
-
-    // 7. Start streaming PCM via ScriptProcessorNode
     //    Buffer size 2048 = ~128 ms @16 kHz — good latency vs. overhead balance.
     this.source = this.audioContext.createMediaStreamSource(this.stream!);
     this.processor = this.audioContext.createScriptProcessor(2048, 1, 1);
 
     this.processor.onaudioprocess = (e) => {
-      if (this.isStopping || this.ws?.readyState !== WebSocket.OPEN) return;
+      if (this.isStopping) return;
 
       // getChannelData returns Float32Array<ArrayBufferLike>; copy to a plain
       // Float32Array<ArrayBuffer> so the resample helper types stay compatible.
@@ -197,14 +183,73 @@ export class SonioxSession {
         int16[i] = s < 0 ? s * 32768 : s * 32767;
       }
 
-      this.ws!.send(int16.buffer);
+      if (this.streamingLive && this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(int16.buffer);
+      } else if (this.preBufferedBytes < SonioxSession.PRE_BUFFER_MAX_BYTES) {
+        // Povezava še ni pripravljena — shrani za kasnejši flush
+        this.preBuffer.push(int16.buffer);
+        this.preBufferedBytes += int16.buffer.byteLength;
+      }
     };
 
     this.source.connect(this.processor);
     // Connect to destination (required for ScriptProcessorNode to fire)
     this.processor.connect(this.audioContext.destination);
 
-    // 8. Active monitoring: mic fizično odklopljen / sistemsko utišan
+    this.durationStartTime = Date.now();
+    // UI lahko pokaže rdeče stanje — od tu naprej se nič ne izgubi
+    this.callbacks.onCaptureStarted?.();
+
+    // 3. VZPOREDNO: temp key (validira tudi kvoto) + odpiranje WebSocketa.
+    //    Prej je bilo zaporedno (~0,5 s + ~0,3 s); vzporedno prihrani ~0,3-0,5 s.
+    const keyPromise = supabase.functions.invoke("soniox-temp-key", { body: {} });
+
+    this.ws = new WebSocket("wss://stt-rt.soniox.com/transcribe-websocket");
+    const wsOpenPromise = new Promise<void>((resolve, reject) => {
+      this.ws!.onopen = () => resolve();
+      this.ws!.onerror = () =>
+        reject(
+          new DictationError("WebSocket connection to Soniox failed", "generic")
+        );
+    });
+
+    const [keyResult] = await Promise.all([keyPromise, wsOpenPromise]);
+    const { data, error } = keyResult;
+    if (error || !data?.api_key) {
+      throw classifySonioxKeyError(error, data);
+    }
+    const tempKey = data.api_key as string;
+
+    // 4. Send config (text frame)
+    this.ws.send(
+      JSON.stringify({
+        api_key: tempKey,
+        model: "stt-rt-preview",
+        audio_format: "pcm_s16le",
+        sample_rate: 16000,
+        num_channels: 1,
+        language_hints: ["sl"],
+        language_hints_strict: true,
+        enable_endpoint_detection: false, // must be false — avoids unwanted <end> tokens
+      })
+    );
+
+    // 5. Message handler
+    this.ws.onmessage = (e) => this.handleMessage(e);
+    this.ws.onerror = () => {
+      // Non-fatal mid-session WS error — log only; onmessage handles error responses
+      console.warn("[Soniox] WebSocket error during live session");
+    };
+
+    // 6. Izprazni predpomnilnik — pošlji ves zvok, zajet med vzpostavljanjem
+    for (const buf of this.preBuffer) {
+      this.ws.send(buf);
+    }
+    this.preBuffer = [];
+    this.preBufferedBytes = 0;
+    this.streamingLive = true;
+
+    // 7. Active monitoring: mic fizično odklopljen / sistemsko utišan
     const micTrack = this.stream!.getAudioTracks()[0];
     if (micTrack) {
       micTrack.onended = () => this.fireDisconnect();
@@ -228,8 +273,7 @@ export class SonioxSession {
         this.callbacks.onSilence?.();
       }
     }, 1000);
-
-    this.durationStartTime = Date.now();
+    // (durationStartTime je nastavljen že ob začetku zajema — korak 2)
   }
 
   /** Enkratni sprožilec za fatalno prekinitev (mic/WS). Idempotenten. */
