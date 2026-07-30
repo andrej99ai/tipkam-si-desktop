@@ -605,7 +605,9 @@ async function handleShortcutPress() {
   // ── Case 1: Soniox live session active → stop it ───────────────────────
   if (activeSonioxSession) {
     isProcessing = true;
-    // Keep "recording" visual until finalize completes (<1 s) — then jump to done.
+    // Prikaži stanje obdelave (rumeno) enako kot v ostalih načinih — tudi če
+    // finalizacija traja le ~1 s, mora biti povratna informacija dosledna.
+    setStatus("processing");
     try {
       const session = activeSonioxSession;
       activeSonioxSession = null;
