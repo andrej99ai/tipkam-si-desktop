@@ -317,6 +317,12 @@ function showMain(email: string) {
 
   // Keep JWT fresh while the app is running so F2 never hits an expired token
   startSessionHeartbeat();
+
+  // Preveri posodobitve ob VSAKEM vstopu na glavni zaslon — torej tudi takoj
+  // po sveži prijavi, ne samo ob zagonu z obstoječo sejo. Brez tega je nov
+  // uporabnik po namestitvi starejše verzije videl banner šele ob naslednjem
+  // zagonu aplikacije.
+  checkForUpdates();
 }
 
 // ─── Status management ─────────────────────────────────────────────────────
@@ -977,8 +983,7 @@ async function init() {
     data: { session },
   } = await supabase.auth.getSession();
   if (session?.user) {
-    showMain(session.user.email ?? "");
-    checkForUpdates();
+    showMain(session.user.email ?? ""); // showMain sam sproži checkForUpdates()
   } else {
     showLogin();
   }
