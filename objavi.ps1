@@ -77,6 +77,18 @@ if ($spremembe) {
 # ---------- 3. Nova verzija ----------
 Naslov "KORAK 4/7 - Dolocam novo verzijo"
 Gitx fetch origin --tags --quiet
+
+# Po vsaki objavi GitHub Actions sam commita latest.json na main, zato je
+# lokalna kopija po vsakem releasu eno commit zadaj za GitHubom. Brez tega
+# uskladjevanja push pade z "rejected (non-fast-forward)".
+Write-Host "Usklajujem lokalno kopijo z GitHubom..."
+try {
+    Gitx pull --rebase origin main
+    Write-Host "OK - usklajeno."
+} catch {
+    git rebase --abort 2>&1 | Out-Null
+    throw "Lokalne in GitHub spremembe si nasprotujejo (konflikt pri rebase). Javi Claudu, da to pogleda - nic ni bilo objavljeno."
+}
 $tagi = git tag --list "v*" | Where-Object { $_ -match '^v\d+\.\d+\.\d+$' }
 if (-not $tagi) { throw "Ne najdem nobenega taga oblike vX.Y.Z." }
 $zadnji = $tagi | Sort-Object { [version]($_.Substring(1)) } | Select-Object -Last 1
