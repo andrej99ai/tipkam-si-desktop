@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 
-export type DictationMode = "fast" | "accurate" | "live";
+export type DictationMode = "accurate" | "live";
 
 export interface DictationResult {
   raw_transcript: string;
@@ -66,13 +66,12 @@ const TIMEOUT_ACCURATE_MS = 240_000; // 4 min za Pro (dolgi posnetki + thinking)
  * Pošlje avdio na Supabase Edge Function za transkripcijo.
  *
  * Tok:
- * 1. Kliče "voice-to-text" Edge Function z audio, mime_type, language_code, mode
- * 2. Za SL + accurate backend že sam lektorira (združen Gemini Pro prompt)
+ * 1. Kliče "voice-to-text" Edge Function z audio, mime_type, language_code
+ * 2. Za SL backend že sam lektorira (združen Gemini Pro prompt)
  *
  * Logika izbire modela (v Edge Function):
- * - language_code = "sl" + mode != "fast" → Gemini 2.5 Pro
- * - language_code = "sl" + mode = "fast"  → Gemini 2.5 Flash
- * - Vsi ostali jeziki                     → Gemini 2.5 Flash
+ * - language_code = "sl" (brez "mode") → Gemini 2.5 Pro
+ * - Vsi ostali jeziki                  → Gemini 2.5 Flash
  */
 export async function processDictation(
   audioBase64: string,
@@ -89,11 +88,9 @@ export async function processDictation(
     language_code: languageCode,
   };
 
-  // Pošlji "mode" samo za slovenščino (za ostale jezike ni relevantno)
-  if (isSlovenian && mode === "fast") {
-    body.mode = "fast";
-  }
-  // Za slovenščino brez "mode" = accurate (privzeto v Edge Function)
+  // "mode" se ne pošilja več: za slovenščino je hitri način odstranjen,
+  // zato backend brez "mode" vedno uporabi accurate (Gemini Pro).
+  // Za ostale jezike "mode" itak ni bil relevanten.
 
   // Pošlji trajanje snemanja za natančno beleženje porabe
   if (durationSeconds !== undefined && durationSeconds > 0) {
@@ -103,7 +100,7 @@ export async function processDictation(
   let data: any;
   let error: any;
 
-  const timeoutMs = (isSlovenian && mode !== "fast") ? TIMEOUT_ACCURATE_MS : TIMEOUT_FAST_MS;
+  const timeoutMs = isSlovenian ? TIMEOUT_ACCURATE_MS : TIMEOUT_FAST_MS;
 
   try {
     const result = await withTimeout(

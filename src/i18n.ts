@@ -26,8 +26,6 @@ export interface Translations {
   modeLabel: string;
   modeAccurate: string;
   modeAccurateTooltip: string;
-  modeFast: string;
-  modeFastTooltip: string;
   modeLive: string;
   modeLiveTooltip: string;
   liveTranscriptLabel: string;
@@ -128,8 +126,6 @@ const sl: Translations = {
   modeLabel: "Način prepisa",
   modeAccurate: "Natančno",
   modeAccurateTooltip: "Natančno oblikovano besedilo (Gemini Pro)",
-  modeFast: "Hitro",
-  modeFastTooltip: "Hiter surov prepis govora (Gemini Flash)",
   modeLive: "Super hitro",
   modeLiveTooltip: "Prepis govora v živo (Soniox Nova)",
   liveTranscriptLabel: "V ŽIVO:",
@@ -217,8 +213,6 @@ const en: Translations = {
   modeLabel: "Transcription mode",
   modeAccurate: "Accurate",
   modeAccurateTooltip: "Accurately formatted text (Gemini Pro)",
-  modeFast: "Fast",
-  modeFastTooltip: "Quick raw transcription (Gemini Flash)",
   modeLive: "Super fast",
   modeLiveTooltip: "Live real-time transcription (Soniox Nova)",
   liveTranscriptLabel: "LIVE:",
@@ -306,8 +300,6 @@ const it: Translations = {
   modeLabel: "Modalità di trascrizione",
   modeAccurate: "Preciso",
   modeAccurateTooltip: "Testo formattato con precisione (Gemini Pro)",
-  modeFast: "Veloce",
-  modeFastTooltip: "Trascrizione rapida grezza (Gemini Flash)",
   modeLive: "Super veloce",
   modeLiveTooltip: "Trascrizione in tempo reale (Soniox Nova)",
   liveTranscriptLabel: "IN DIRETTA:",

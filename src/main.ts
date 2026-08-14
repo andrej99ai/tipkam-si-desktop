@@ -27,7 +27,6 @@ const statusDot = document.getElementById("status-dot") as HTMLDivElement;
 const statusText = document.getElementById("status-text") as HTMLParagraphElement;
 const lastTranscript = document.getElementById("last-transcript") as HTMLDivElement;
 const lastTranscriptText = document.getElementById("last-transcript-text") as HTMLParagraphElement;
-const modeFastBtn = document.getElementById("mode-fast-btn") as HTMLButtonElement;
 const modeAccurateBtn = document.getElementById("mode-accurate-btn") as HTMLButtonElement;
 const modeLiveBtn = document.getElementById("mode-live-btn") as HTMLButtonElement;
 const modeToggle = document.getElementById("mode-toggle") as HTMLDivElement;
@@ -68,7 +67,10 @@ function loadSettings() {
     if (saved) {
       const settings = JSON.parse(saved);
       if (settings.language) currentLanguage = settings.language;
-      if (settings.mode) currentMode = settings.mode;
+      // Migracija: hitri način je odstranjen — stare shranjene nastavitve
+      // z mode "fast" preslikamo na "accurate", sicer bi obstoječi uporabniki
+      // ostali na Flash modelu brez aktivnega gumba v vmesniku.
+      if (settings.mode) currentMode = settings.mode === "fast" ? "accurate" : settings.mode;
       if (settings.shortcut) currentShortcut = settings.shortcut;
       if (settings.uiLanguage && ["sl", "en", "it"].includes(settings.uiLanguage)) {
         setUILanguage(settings.uiLanguage as UILanguage);
@@ -178,13 +180,14 @@ function handleLanguageChange() {
     // Show mode toggle for Slovenian
     modeToggle.style.display = "block";
     // Sync the active button with currentMode (in case user switched away
-    // from Slovenian and back — currentMode may have changed to "fast")
+    // from Slovenian and back — currentMode may have changed to "accurate")
     setMode(currentMode);
   } else {
-    // Hide mode toggle for other languages — always use "fast".
-    // Also reset "live" to "fast" so it doesn't persist when returning to SL.
+    // Hide mode toggle for other languages — standard (non-live) pot.
+    // Reset "live" na "accurate", ker je Soniox trdo vezan na slovenščino;
+    // za tuje jezike se "mode" backendu tako ali tako ne pošilja.
     modeToggle.style.display = "none";
-    setMode("fast"); // also updates the (now hidden) button states for consistency
+    setMode("accurate"); // also updates the (now hidden) button states for consistency
   }
   saveSettings();
 }
@@ -193,12 +196,10 @@ function handleLanguageChange() {
 function setMode(mode: DictationMode) {
   currentMode = mode;
   // Clear all active states, then apply to the matching button
-  modeFastBtn?.classList.remove("active");
   modeAccurateBtn?.classList.remove("active");
   modeLiveBtn?.classList.remove("active");
 
-  if (mode === "fast") modeFastBtn?.classList.add("active");
-  else if (mode === "accurate") modeAccurateBtn?.classList.add("active");
+  if (mode === "accurate") modeAccurateBtn?.classList.add("active");
   else if (mode === "live") modeLiveBtn?.classList.add("active");
 
   saveSettings();
@@ -340,7 +341,6 @@ function setStatus(
   // Lock mode buttons during active recording or processing so the user
   // cannot switch modes mid-cycle (audio wouldn't match the selected model).
   const lock = state === "recording" || state === "processing";
-  if (modeFastBtn) modeFastBtn.disabled = lock;
   if (modeAccurateBtn) modeAccurateBtn.disabled = lock;
   if (modeLiveBtn) modeLiveBtn.disabled = lock;
 
@@ -850,7 +850,6 @@ emailInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") passwordInput.focus();
 });
 logoutBtn.addEventListener("click", handleLogout);
-if (modeFastBtn) modeFastBtn.addEventListener("click", () => setMode("fast"));
 if (modeAccurateBtn) modeAccurateBtn.addEventListener("click", () => setMode("accurate"));
 if (modeLiveBtn) modeLiveBtn.addEventListener("click", () => setMode("live"));
 if (languageSelect) languageSelect.addEventListener("change", handleLanguageChange);
